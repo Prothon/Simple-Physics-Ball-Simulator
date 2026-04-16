@@ -422,7 +422,7 @@ window.visualViewport?.addEventListener('resize', resize);
 const PPM = 15;       // Pixels Per Meter — how big 1 meter is on screen
 const DT = 1 / 60;    // Delta Time — time between frames (1/60th of a second)
 // Well surface radius — shared between physics and drawing
-function wellRadius(mass) { return 6 + (mass / 2000) * 10; }
+function wellRadius(mass) { return 10 + (mass / 2000) * 30; }
 // Ball radius scales with mass: sqrt so it grows visually but not absurdly
 function ballRadius() { return BASE_RADIUS * Math.sqrt(param('ballMass')); }
 const MARGIN = { top: 10, right: 10, bottom: 30, left: 30 }; // Space for axis labels
@@ -929,10 +929,9 @@ function step() {
       // Velocity component along the normal (toward/away from well)
       const vDotN = ball.vx * nx + ball.vy * ny;
 
-      if (vDotN < -1.0) {
+      if (vDotN < -2.0) {
         // Real impact — bounce with extra energy loss on well surfaces
-        // Wells constantly re-accelerate the ball, so we need aggressive damping
-        const wellRestitution = restitution * 0.5; // Half the normal bounciness
+        const wellRestitution = restitution * 0.3; // 30% of normal bounciness
         ball.vx -= (1 + wellRestitution) * vDotN * nx;
         ball.vy -= (1 + wellRestitution) * vDotN * ny;
 
