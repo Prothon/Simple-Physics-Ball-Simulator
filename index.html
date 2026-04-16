@@ -28,6 +28,10 @@
     padding: 8px; font-weight: 600; cursor: pointer; font-size: 13px;
   }
   button:hover { background: #5ec4ab; }
+  kbd {
+    background: #0f0f23; border: 1px solid #7fdbca55; border-radius: 3px;
+    padding: 1px 6px; font-family: inherit; font-size: 11px; color: #7fdbca;
+  }
 
   /* Tooltip for hovering over labels */
   .tip {
@@ -73,6 +77,16 @@
 
 <div id="panel">
   <h2>⚽ Physics Sandbox</h2>
+
+  <div class="group" style="font-size:12px; line-height:1.8; color:#ccc;">
+    <b style="color:#7fdbca;">🕹️ How to Play</b><br>
+    <kbd>Click + Drag</kbd> → Place & throw the ball<br>
+    <kbd>Right Click</kbd> → Drop a gravity well 🪐<br>
+    <kbd>X</kbd> → Clear all gravity wells<br>
+    <kbd>R</kbd> → Reset everything<br>
+    <kbd>F</kbd> → Toggle force arrows<br>
+    <kbd>T</kbd> → Toggle trail
+  </div>
 
   <div class="group" style="display:flex; flex-wrap:wrap; gap:4px;">
     <button class="scene-btn" data-scene="earth">🌍 Earth</button>
@@ -170,7 +184,7 @@
 
   <div class="group">
     <b style="color:#c084fc; font-size:13px;">🪐 Gravity Wells</b>
-    <div class="unit">Right-click to place a gravity well</div>
+    <div class="unit"><kbd>Right Click</kbd> to place · <kbd>X</kbd> to clear all</div>
     <label>Well Mass <span class="val" id="vWellMass">200</span>
       <div class="tip">
         A gravity well is like a planet — it pulls the ball toward it. The heavier it is, the stronger the pull. This uses Newton's law of gravity!<br>
@@ -542,6 +556,22 @@ for (const btn of document.querySelectorAll('.scene-btn')) {
 }
 // Set initial active state
 document.querySelector('.scene-btn[data-scene="space"]').classList.add('active');
+
+// KEYBOARD SHORTCUTS
+document.addEventListener('keydown', e => {
+  const key = e.key.toLowerCase();
+  if (key === 'x') {                          // X = clear wells
+    gravWells = [];
+    sWellMass.value = 200;
+    vWellMass.textContent = '200';
+  } else if (key === 'r') {                    // R = full reset
+    document.getElementById('btnReset').click();
+  } else if (key === 'f') {                    // F = toggle forces
+    cbForces.checked = !cbForces.checked;
+  } else if (key === 't') {                    // T = toggle trail
+    cbTrail.checked = !cbTrail.checked;
+  }
+});
 
 // ============================================================================
 // SECTION 8: PHYSICS — The step() function runs every frame (60 times/second)
