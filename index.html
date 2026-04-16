@@ -21,7 +21,7 @@
   .toggle-row { display: flex; align-items: center; font-size: 13px; margin-bottom: 4px; }
   .readout { font-size: 12px; color: #888; line-height: 1.7; }
   .readout b { color: #ccc; }
-  button.scene-btn { font-size: 11px; padding: 5px 8px; flex: 1 1 auto; min-width: 70px; }
+  button.scene-btn { font-size: 11px; padding: 5px 4px; min-width: 0; width: calc(33.33% - 3px); }
   button.scene-btn.active { background: #1a1a2e; color: #7fdbca; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); border: 1px solid #7fdbca66; }
   button {
     background: #7fdbca; color: #1a1a2e; border: none; border-radius: 4px;
@@ -216,7 +216,8 @@
     <kbd>X</kbd> → Clear all gravity wells<br>
     <kbd>R</kbd> → Reset everything<br>
     <kbd>F</kbd> → Toggle force arrows<br>
-    <kbd>T</kbd> → Toggle trail
+    <kbd>T</kbd> → Toggle trail<br>
+    <kbd>H</kbd> → Toggle formulas
   </div>
 </div>
 
@@ -339,7 +340,9 @@ window.addEventListener('resize', resize);
 
 const PPM = 15;       // Pixels Per Meter — how big 1 meter is on screen
 const DT = 1 / 60;    // Delta Time — time between frames (1/60th of a second)
-const RADIUS = 14;     // Ball radius in pixels
+const BASE_RADIUS = 14; // Ball radius at mass 1.0
+// Ball radius scales with mass: sqrt so it grows visually but not absurdly
+function ballRadius() { return BASE_RADIUS * Math.sqrt(param('ballMass')); }
 const MARGIN = { top: 10, right: 10, bottom: 30, left: 30 }; // Space for axis labels
 
 // ============================================================================
@@ -581,6 +584,8 @@ document.addEventListener('keydown', e => {
     cbForces.checked = !cbForces.checked;
   } else if (key === 't') {                    // T = toggle trail
     cbTrail.checked = !cbTrail.checked;
+  } else if (key === 'h') {                    // H = toggle formula overlay
+    window._hideFormulas = !window._hideFormulas;
   }
 });
 
@@ -614,7 +619,7 @@ function step() {
   // If the ball is barely moving for 15 frames (~250ms), pause the sim
   const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
   const onFloor = (
-    ball.y + RADIUS >= simBottom() &&
+    ball.y + ballRadius() >= simBottom() &&
     ball.vy >= 0 &&
     ball.vy <= gravity
   );
@@ -719,15 +724,15 @@ function step() {
     ball.vx *= (1 - friction);
     if (Math.abs(ball.vx) < 0.01) ball.vx = 0;
     // If stuck in a corner (on floor + against a wall), zero everything
-    if ((ball.x - RADIUS <= simLeft() + 1 || ball.x + RADIUS >= simRight() - 1) && Math.abs(ball.vx) < 0.5) {
+    if ((ball.x - ballRadius() <= simLeft() + 1 || ball.x + ballRadius() >= simRight() - 1) && Math.abs(ball.vx) < 0.5) {
       ball.vx = 0;
     }
   }
 
   // --- COLLISIONS ---
-  if (ball.y + RADIUS > simBottom()) {
+  if (ball.y + ballRadius() > simBottom()) {
     const impactVy = ball.vy;
-    ball.y = simBottom() - RADIUS;
+    ball.y = simBottom() - ballRadius();
     if (impactVy > gravity + 0.5) {
       log.bounce('floor', `impactVy=${impactVy.toFixed(2)}`);
       ball.vy = -impactVy * restitution;
@@ -738,9 +743,9 @@ function step() {
     }
   }
 
-  if (ball.y - RADIUS < simTop()) {
+  if (ball.y - ballRadius() < simTop()) {
     const impactVy = -ball.vy;
-    ball.y = simTop() + RADIUS;
+    ball.y = simTop() + ballRadius();
     if (impactVy > 1.0) {
       ball.vy = -ball.vy * restitution;
       bounceFlashes.push({ x: ball.x, y: simTop(), age: 0 });
@@ -750,9 +755,9 @@ function step() {
     }
   }
 
-  if (ball.x + RADIUS > simRight()) {
+  if (ball.x + ballRadius() > simRight()) {
     const impactVx = ball.vx;
-    ball.x = simRight() - RADIUS;
+    ball.x = simRight() - ballRadius();
     if (impactVx > 1.0) {
       ball.vx = -impactVx * restitution;
       bounceFlashes.push({ x: simRight(), y: ball.y, age: 0 });
@@ -762,9 +767,9 @@ function step() {
     }
   }
 
-  if (ball.x - RADIUS < simLeft()) {
+  if (ball.x - ballRadius() < simLeft()) {
     const impactVx = -ball.vx;
-    ball.x = simLeft() + RADIUS;
+    ball.x = simLeft() + ballRadius();
     if (impactVx > 1.0) {
       ball.vx = -ball.vx * restitution;
       bounceFlashes.push({ x: simLeft(), y: ball.y, age: 0 });
@@ -911,7 +916,7 @@ function draw() {
   }
 
   // --- LIVE FORMULA OVERLAY ---
-  if (ball.active) {
+  if (ball.active && !window._hideFormulas) {
     drawFormulaOverlay();
   }
 }
@@ -1030,11 +1035,11 @@ function drawGravityWells() {
 
 function drawAimingUI() {
   // Show the ball at the placement position
-  drawCircle(placePos.x, placePos.y, RADIUS, '#fff');
+  drawCircle(placePos.x, placePos.y, ballRadius(), '#fff');
 
   // Pulsing ring to show "you placed it, now drag"
   const pulse = 1 + Math.sin(Date.now() / 150) * 0.3;
-  drawRing(placePos.x, placePos.y, RADIUS + 8 * pulse, 'rgba(127,219,202,0.5)', 2);
+  drawRing(placePos.x, placePos.y, ballRadius() + 8 * pulse, 'rgba(127,219,202,0.5)', 2);
 
   // If the mouse has moved, show the aiming arrow
   if (aimPos) {
@@ -1055,9 +1060,9 @@ function drawAimingUI() {
 
 function drawBall() {
   // Glow behind the ball
-  drawCircle(ball.x, ball.y, RADIUS + 6, 'rgba(127,219,202,0.12)');
+  drawCircle(ball.x, ball.y, ballRadius() + 6, 'rgba(127,219,202,0.12)');
   // The ball itself
-  drawCircle(ball.x, ball.y, RADIUS, '#fff');
+  drawCircle(ball.x, ball.y, ballRadius(), '#fff');
 
   // Dashed crosshair lines to the axes (shows coordinates visually)
   ctx.strokeStyle = 'rgba(255,255,255,0.15)';
@@ -1071,7 +1076,7 @@ function drawBall() {
   const pos = ballPosMeters();
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.font = '11px Segoe UI';
-  ctx.fillText(`(${pos.x}, ${pos.y})`, ball.x + RADIUS + 6, ball.y - RADIUS - 4);
+  ctx.fillText(`(${pos.x}, ${pos.y})`, ball.x + ballRadius() + 6, ball.y - ballRadius() - 4);
 
   // Force arrows (when enabled)
   if (cbForces.checked) {
@@ -1164,7 +1169,7 @@ function updateReadout() {
   const vel = ballVelMs();
   const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y).toFixed(1);
   const angle = Math.atan2(+vel.y, +vel.x) * 180 / Math.PI;
-  const height = ((simBottom() - ball.y - RADIUS) / PPM).toFixed(1);
+  const height = ((simBottom() - ball.y - ballRadius()) / PPM).toFixed(1);
 
   readout.innerHTML =
     `<b>Speed:</b> ${speed} m/s<br>` +
