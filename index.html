@@ -63,6 +63,22 @@
   }
   #legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
 
+  /* Formula overlay */
+  #formula-box {
+    position: absolute; top: 12px; left: 50%; transform: translateX(calc(-50% - 140px));
+    z-index: 5; pointer-events: auto;
+  }
+  #formula-toggle {
+    display: none; background: rgba(15,15,35,0.85); border: 1px solid #7fdbca44;
+    color: #7fdbca; border-radius: 6px; padding: 6px 14px; font-size: 13px;
+    cursor: pointer; width: 100%;
+  }
+  #formula-content {
+    background: rgba(15,15,35,0.85); border: 1px solid rgba(127,219,202,0.3);
+    border-radius: 6px; padding: 10px 12px; font: 13px monospace; color: #ccc;
+    line-height: 1.5; white-space: pre; min-width: 390px;
+  }
+
   /* Drawer toggle button — hidden on desktop */
   #drawer-toggle {
     display: none; position: fixed; top: 10px; right: 10px; z-index: 20;
@@ -83,7 +99,18 @@
     #drawer-toggle { display: block; }
     #legend { right: 16px; bottom: 16px; }
     #tutorial { transform: translateX(-50%); left: 50%; }
-    .tip { display: none !important; } /* Tooltips don't work well on touch */
+    .tip { display: none !important; }
+
+    /* Formula box becomes a collapsible top drawer on mobile */
+    #formula-box { top: 0; left: 0; right: 0; transform: none; }
+    #formula-toggle { display: block; }
+    #formula-content {
+      min-width: 0; width: 100%; border-radius: 0 0 6px 6px;
+      max-height: 0; overflow: hidden; padding: 0 12px;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      font-size: 11px;
+    }
+    #formula-content.open { max-height: 300px; padding: 10px 12px; }
   }
 </style>
 </head>
@@ -92,6 +119,12 @@
 <canvas id="c"></canvas>
 <button id="drawer-toggle">⚙️</button>
 <div id="tutorial"></div>
+
+<!-- Formula overlay — collapsible on mobile -->
+<div id="formula-box">
+  <button id="formula-toggle">📐 ▼</button>
+  <div id="formula-content"></div>
+</div>
 
 <div id="legend">
   <span class="dot" style="background:#ff6b6b"></span>Gravity (pulling down)<br>
@@ -625,6 +658,14 @@ document.getElementById('drawer-toggle').addEventListener('click', () => {
   document.getElementById('panel').classList.toggle('open');
 });
 
+// Formula drawer toggle (mobile)
+document.getElementById('formula-toggle').addEventListener('click', () => {
+  const content = document.getElementById('formula-content');
+  const btn = document.getElementById('formula-toggle');
+  content.classList.toggle('open');
+  btn.textContent = content.classList.contains('open') ? '📐 ▲' : '📐 ▼';
+});
+
 // Close drawer when tapping the canvas on mobile
 canvas.addEventListener('touchstart', () => {
   document.getElementById('panel').classList.remove('open');
@@ -1020,9 +1061,7 @@ function draw() {
   }
 
   // --- LIVE FORMULA OVERLAY ---
-  if (ball.active && !window._hideFormulas) {
-    drawFormulaOverlay();
-  }
+  drawFormulaOverlay();
 }
 
 // ============================================================================
@@ -1209,7 +1248,15 @@ function drawBall() {
 }
 
 function drawFormulaOverlay() {
-  // Show the physics formulas with live values plugged in
+  const box = document.getElementById('formula-box');
+  const content = document.getElementById('formula-content');
+
+  if (!ball.active || window._hideFormulas) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = '';
+
   const g = param('grav');
   const e = (param('bounce') / 100).toFixed(2);
   const mu = (param('fric') / 100).toFixed(2);
@@ -1218,46 +1265,22 @@ function drawFormulaOverlay() {
   const pos = ballPosMeters();
   const dragCoeff = (param('drag') / 100).toFixed(4);
 
-  const lines = [
-    `Position:   x = ${pos.x} m    y = ${pos.y} m`,
-    `Velocity:   Vx = ${vel.x} m/s    Vy = ${vel.y} m/s`,
-    ``,
-    `Gravity:    Vy += g × Δt  →  Vy += ${g} × ${DT.toFixed(4)}`,
-    `Wind:       Vx += wind × Δt  →  Vx += ${w} × ${DT.toFixed(4)}`,
-    `Drag:       V = V × (1 − ${dragCoeff} × speed)`,
-    `Movement:   x += Vx × Δt     y += Vy × Δt`,
-    ``,
-    `On bounce:  Vy = −Vy × e  (e = ${e})`,
-    `Friction:   Vx = Vx × (1 − μ)  (μ = ${mu})`,
-    `Ball mass:  ${param('ballMass').toFixed(1)} kg  (affects wind & wells)`,
-  ];
+  let text =
+    `Position:   x = ${pos.x} m    y = ${pos.y} m\n` +
+    `Velocity:   Vx = ${vel.x} m/s    Vy = ${vel.y} m/s\n\n` +
+    `Gravity:    Vy += g × Δt  →  Vy += ${g} × ${DT.toFixed(4)}\n` +
+    `Wind:       Vx += wind × Δt  →  Vx += ${w} × ${DT.toFixed(4)}\n` +
+    `Drag:       V = V × (1 − ${dragCoeff} × speed)\n` +
+    `Movement:   x += Vx × Δt     y += Vy × Δt\n\n` +
+    `On bounce:  Vy = −Vy × e  (e = ${e})\n` +
+    `Friction:   Vx = Vx × (1 − μ)  (μ = ${mu})\n` +
+    `Ball mass:  ${param('ballMass').toFixed(1)} kg  (affects wind & wells)`;
 
-  // Add gravity well info if any exist
   if (gravWells.length > 0) {
-    lines.push(``);
-    lines.push(`Wells:      F = mass / dist²  (${gravWells.length} active)`);
+    text += `\n\nWells:      F = mass / dist²  (${gravWells.length} active)`;
   }
 
-  const boxWidth = 390;
-  const boxHeight = lines.length * 18 + 16;
-  const boxX = canvas.width / 2 - boxWidth / 2;
-  const boxY = 12;
-
-  // Semi-transparent background box
-  ctx.fillStyle = 'rgba(15,15,35,0.8)';
-  ctx.strokeStyle = 'rgba(127,219,202,0.3)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
-  ctx.fill();
-  ctx.stroke();
-
-  // Formula text
-  ctx.fillStyle = '#ccc';
-  ctx.font = '13px monospace';
-  lines.forEach((line, i) => {
-    ctx.fillText(line, boxX + 12, boxY + 18 + i * 18);
-  });
+  content.textContent = text;
 }
 
 // ============================================================================
