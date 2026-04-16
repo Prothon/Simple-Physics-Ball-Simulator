@@ -594,12 +594,11 @@ function step() {
     const dist = Math.sqrt(distSquared);
 
     if (dist < 3) {
-      // Ball has been captured by the gravity well!
-      if (_log) log.physics('WELL', `[${wi}] CAPTURED (dist=${dist.toFixed(1)})`);
       ball.x = well.x;
       ball.y = well.y;
       ball.vx = 0;
       ball.vy = 0;
+      ball.active = false;  // Stop the simulation entirely
       log.well(`CAPTURED by well #${wi}`);
       return;
     }
