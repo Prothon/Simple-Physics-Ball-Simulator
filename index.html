@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Physics Sandbox — Grade 12 Remake</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+  canvas { background: #0f0f23; cursor: crosshair; display: block; }
+  #panel {
+    width: 280px; min-width: 280px; padding: 16px; background: #16213e;
+    display: flex; flex-direction: column; gap: 10px; overflow-y: auto;
+  }
+  #panel h2 { font-size: 15px; color: #7fdbca; text-transform: uppercase; letter-spacing: 1px; }
+  .group { background: #1a1a3e; border-radius: 6px; padding: 10px; }
+  .group label { display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 2px; cursor: help; position: relative; }
+  .group label span.val { color: #7fdbca; font-variant-numeric: tabular-nums; min-width: 48px; text-align: right; }
+  .group .unit { font-size: 11px; color: #556; margin-bottom: 6px; }
+  input[type=range] { width: 100%; accent-color: #7fdbca; margin-bottom: 6px; }
+  input[type=checkbox] { accent-color: #7fdbca; margin-right: 6px; }
+  .toggle-row { display: flex; align-items: center; font-size: 13px; margin-bottom: 4px; }
+  .readout { font-size: 12px; color: #888; line-height: 1.7; }
+  .readout b { color: #ccc; }
+  button.scene-btn { font-size: 11px; padding: 5px 8px; flex: 1 1 auto; min-width: 70px; }
+  button {
+    background: #7fdbca; color: #1a1a2e; border: none; border-radius: 4px;
+    padding: 8px; font-weight: 600; cursor: pointer; font-size: 13px;
+  }
+  button:hover { background: #5ec4ab; }
+
+  /* Tooltip for hovering over labels */
+  .tip {
+    display: none; position: absolute; left: 0; top: 100%; z-index: 10;
+    background: #0f0f23; border: 1px solid #7fdbca55; border-radius: 6px;
+    padding: 10px 12px; width: 250px; font-size: 12px; line-height: 1.5;
+    color: #ccc; font-weight: normal; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+  .tip .formula { color: #7fdbca; font-family: monospace; font-size: 13px; margin: 6px 0 2px; }
+  .tip .example { color: #ffd93d; font-style: italic; }
+  .group label:hover .tip { display: block; }
+
+  #tutorial {
+    position: absolute; top: 20px; left: 50%;
+    transform: translateX(calc(-50% - 140px));
+    background: rgba(22,33,62,0.92); border: 1px solid #7fdbca44;
+    border-radius: 8px; padding: 14px 24px; text-align: center;
+    font-size: 16px; color: #e0e0e0; pointer-events: none; transition: opacity 0.4s;
+  }
+  #tutorial .step-num { color: #7fdbca; font-weight: 700; }
+  #tutorial .key { background: #7fdbca33; border-radius: 4px; padding: 2px 8px; font-weight: 600; color: #7fdbca; }
+
+  /* Legend moved to bottom-right so it doesn't overlap the Y axis */
+  #legend {
+    position: absolute; bottom: 16px; right: 296px;
+    background: rgba(22,33,62,0.85); border-radius: 6px; padding: 10px 14px;
+    font-size: 12px; line-height: 1.8; pointer-events: none;
+  }
+  #legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<div id="tutorial"></div>
+
+<div id="legend">
+  <span class="dot" style="background:#ff6b6b"></span>Gravity (pulling down)<br>
+  <span class="dot" style="background:#ffd93d"></span>Velocity (where it's going)<br>
+  <span class="dot" style="background:#6bcfff"></span>Wind (pushing sideways)<br>
+  <span class="dot" style="background:#c084fc"></span>Gravity well pull
+</div>
+
+<div id="panel">
+  <h2>⚽ Physics Sandbox</h2>
+
+  <div class="group" style="display:flex; flex-wrap:wrap; gap:4px;">
+    <button class="scene-btn" data-scene="earth">🌍 Earth</button>
+    <button class="scene-btn" data-scene="moon">🌙 Moon</button>
+    <button class="scene-btn" data-scene="mars">🔴 Mars</button>
+    <button class="scene-btn" data-scene="jupiter">🟠 Jupiter</button>
+    <button class="scene-btn" data-scene="space">🛸 Zero-G</button>
+    <button class="scene-btn" data-scene="superball">🟡 Super Ball</button>
+    <button class="scene-btn" data-scene="windstorm">🌪️ Windstorm</button>
+    <button class="scene-btn" data-scene="ice">🧊 Ice Rink</button>
+    <button class="scene-btn" data-scene="mud">🟤 Mud Pit</button>
+  </div>
+
+  <div class="group">
+    <label>Gravity <span class="val" id="vGrav">9.81</span>
+      <div class="tip">
+        Gravity is the force that pulls everything toward the ground. The bigger the number, the harder things fall.<br>
+        <div class="formula">Vy = Vy + (gravity × time)</div>
+        <div class="example">🌍 Earth = 9.81 · 🌙 Moon = 1.62 · 🟠 Jupiter = 24.79</div>
+        On the Moon, you could jump 6× higher because gravity is 6× weaker!
+      </div>
+    </label>
+    <input type="range" id="sGrav" min="0" max="30" step="0.01" value="9.81">
+
+    <label>Bounciness <span class="val" id="vBounce">0.40</span>
+      <div class="tip">
+        This is called the "coefficient of restitution." It controls how much energy the ball keeps when it bounces. At 0, the ball goes SPLAT. At 1, it bounces back to the exact same height forever.<br>
+        <div class="formula">Vy = −Vy × bounciness</div>
+        <div class="example">🏀 Basketball ≈ 0.75 · ⚾ Baseball ≈ 0.55 · 🧱 Brick = 0</div>
+        The minus sign (−) is what makes the ball go UP after hitting the floor!
+      </div>
+    </label>
+    <input type="range" id="sBounce" min="0" max="100" step="1" value="40">
+
+    <label>Friction <span class="val" id="vFric">0.25</span>
+      <div class="tip">
+        Friction is what slows things down when they slide across a surface. Ice has very low friction (things slide forever). Sandpaper has very high friction (things stop fast).<br>
+        <div class="formula">Vx = Vx × (1 − friction)</div>
+        <div class="example">🧊 Ice ≈ 0.01 · 🏀 Gym floor ≈ 0.25 · 🏖️ Sand ≈ 0.60</div>
+        Without friction, a ball rolling on the ground would never stop!
+      </div>
+    </label>
+    <input type="range" id="sFric" min="0" max="100" step="1" value="25">
+
+    <label>Wind <span class="val" id="vWind">0.0</span>
+      <div class="tip">
+        Wind pushes the ball sideways, like blowing on it. Negative numbers push left, positive numbers push right.<br>
+        <div class="formula">Vx = Vx + (wind × time)</div>
+        <div class="example">Try throwing the ball INTO the wind — can you make it hover?</div>
+      </div>
+    </label>
+    <input type="range" id="sWind" min="-5" max="5" step="0.1" value="0">
+
+    <label>Throw Power <span class="val" id="vPower">50%</span>
+      <div class="tip">
+        Controls how hard you throw the ball. Higher = faster launch. The direction comes from which way you drag your mouse (like a slingshot — pull back to shoot forward).<br>
+        <div class="formula">velocity = drag distance × power</div>
+        <div class="example">Try a gentle toss (10%) vs a cannon shot (100%)!</div>
+      </div>
+    </label>
+    <input type="range" id="sPower" min="5" max="100" step="1" value="50">
+
+    <label>⏱️ Time Scale <span class="val" id="vTimeScale">1.0x</span>
+      <div class="tip">
+        Slows down or speeds up time itself! At 0.25x everything moves in slow motion so you can watch the physics happen step by step. At 2x it's fast-forward.<br>
+        <div class="formula">All forces × time scale</div>
+        <div class="example">Try slow-mo (0.25x) to watch a bounce happen frame by frame!</div>
+      </div>
+    </label>
+    <input type="range" id="sTimeScale" min="0.1" max="2" step="0.05" value="1">
+
+    <label>🌫️ Air Drag <span class="val" id="vDrag">0.20%</span>
+      <div class="tip">
+        Air resistance! The faster the ball moves, the more the air slows it down. This is why skydivers reach a "terminal velocity" — they stop speeding up because drag equals gravity.<br>
+        <div class="formula">V = V × (1 − drag × speed)</div>
+        <div class="example">At 0% = vacuum (no air). At 1% = thick soup. Real air is very low (~0.1-0.3%).</div>
+        This is why a feather falls slowly but a bowling ball doesn't — the feather has more drag relative to its weight!
+      </div>
+    </label>
+    <input type="range" id="sDrag" min="0" max="1" step="0.01" value="0.2">
+  </div>
+
+  <div class="group">
+    <div class="toggle-row"><input type="checkbox" id="cbForces" checked> Show forces on ball</div>
+    <div class="toggle-row"><input type="checkbox" id="cbTrail" checked> Show trail</div>
+    <div class="toggle-row"><input type="checkbox" id="cbBounceFlash" checked> Flash on bounce</div>
+  </div>
+
+  <div class="group">
+    <b style="color:#c084fc; font-size:13px;">🪐 Gravity Wells</b>
+    <div class="unit">Right-click to place a gravity well</div>
+    <label>Well Mass <span class="val" id="vWellMass">500</span>
+      <div class="tip">
+        A gravity well is like a planet — it pulls the ball toward it. The heavier it is, the stronger the pull. This uses Newton's law of gravity!<br>
+        <div class="formula">Force = mass ÷ distance²</div>
+        <div class="example">Set gravity to 0, place a well, throw the ball sideways — you just made an orbit! 🛸</div>
+        The closer the ball gets, the MUCH stronger the pull (because distance is squared).
+      </div>
+    </label>
+    <input type="range" id="sWellMass" min="50" max="2000" step="10" value="500">
+    <button id="btnClearWells" style="width:100%; margin-top:4px; background:#c084fc;">🗑️ Clear All Wells</button>
+  </div>
+
+  <div class="group readout" id="readout"></div>
+  <button id="btnReset">🔄 Reset</button>
+
+  <div class="group" style="font-size:11px; color:#556; line-height:1.5;">
+    <b style="color:#7fdbca;">🧪 Try these experiments:</b><br>
+    • Set gravity to 0 — what happens?<br>
+    • Bounciness to 1.0 — does it stop?<br>
+    • Max wind + throw against it<br>
+    • Gravity 1.62 = the Moon!<br>
+    • Gravity 24.79 = Jupiter!<br>
+    • Gravity 0 + a well + throw sideways = orbit!
+  </div>
+</div>
+
+<script>
+// ============================================================================
+// PHYSICS SANDBOX — A physics simulator built for learning!
+//
+// Originally written in Visual Basic 6 as a Grade 12 exam project (~2006).
+// Rebuilt in JavaScript/Canvas so Daniel can play with it and learn to code.
+//
+// HOW IT WORKS:
+//   Every 1/60th of a second (60 frames per second), we:
+//     1. STEP  — update the ball's position using physics formulas
+//     2. DRAW  — paint everything on the canvas
+//     3. READOUT — update the numbers on the side panel
+//
+// HOW TO MODIFY:
+//   Want to change how the ball behaves? Look at the step() function.
+//   Want to change how things look? Look at the draw() function.
+//   Want to add a new slider? Copy one of the entries in SLIDERS below.
+//
+// KEY CONCEPTS:
+//   - Velocity = how fast something is moving (pixels per frame)
+//   - Acceleration = how much velocity changes each frame (gravity, wind)
+//   - Restitution = how much energy is kept after a bounce (0 to 1)
+//   - Friction = how much the ground slows horizontal movement
+// ============================================================================
+
+// ============================================================================
+// SECTION 1: SETUP — Get references to HTML elements and set constants
+// ============================================================================
+
+// The canvas is our drawing surface — everything visual happens here
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');  // "2d context" = the drawing API
+const tutorial = document.getElementById('tutorial');
+const readout = document.getElementById('readout');
+
+// Make the canvas fill the window (minus the side panel)
+function resize() {
+  canvas.width = window.innerWidth - 280;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ============================================================================
+// SECTION 2: CONSTANTS — Numbers that never change
+// ============================================================================
+
+const PPM = 15;       // Pixels Per Meter — how big 1 meter is on screen
+const DT = 1 / 60;    // Delta Time — time between frames (1/60th of a second)
+const RADIUS = 14;     // Ball radius in pixels
+const MARGIN = { top: 10, right: 10, bottom: 30, left: 30 }; // Space for axis labels
+
+// ============================================================================
+// SECTION 3: SLIDERS — Each slider controls one physics parameter
+//
+// To add a new slider:
+//   1. Add an <input type="range"> and <span> in the HTML
+//   2. Add an entry here with the element IDs and a format function
+//   3. Use param('yourName') anywhere in the code to read its value
+// ============================================================================
+
+const SLIDERS = {
+  grav:   { el: document.getElementById('sGrav'),   out: document.getElementById('vGrav'),   fmt: v => (+v).toFixed(2) },
+  bounce: { el: document.getElementById('sBounce'), out: document.getElementById('vBounce'), fmt: v => (v / 100).toFixed(2) },
+  fric:   { el: document.getElementById('sFric'),   out: document.getElementById('vFric'),   fmt: v => (v / 100).toFixed(2) },
+  wind:   { el: document.getElementById('sWind'),   out: document.getElementById('vWind'),   fmt: v => (+v).toFixed(1) },
+  power:  { el: document.getElementById('sPower'),  out: document.getElementById('vPower'),  fmt: v => v + '%' },
+  timeScale: { el: document.getElementById('sTimeScale'), out: document.getElementById('vTimeScale'), fmt: v => (+v).toFixed(2) + 'x' },
+  drag: { el: document.getElementById('sDrag'), out: document.getElementById('vDrag'), fmt: v => (+v).toFixed(2) + '%' },
+};
+
+// When any slider moves, update its display label
+for (const s of Object.values(SLIDERS)) {
+  s.el.addEventListener('input', () => s.out.textContent = s.fmt(s.el.value));
+}
+
+// Helper: read a slider's current value as a number
+function param(name) { return +SLIDERS[name].el.value; }
+
+// The simulation area (where the ball lives) is inset from the canvas edges
+// so axis labels have room. These functions return the boundaries.
+function simLeft()   { return MARGIN.left; }
+function simRight()  { return canvas.width - MARGIN.right; }
+function simTop()    { return MARGIN.top; }
+function simBottom() { return canvas.height - MARGIN.bottom; }
+function simWidth()  { return simRight() - simLeft(); }
+function simHeight() { return simBottom() - simTop(); }
+
+// Checkboxes for toggling visual features
+const cbForces = document.getElementById('cbForces');
+const cbTrail = document.getElementById('cbTrail');
+const cbBounceFlash = document.getElementById('cbBounceFlash');
+
+// Gravity well mass slider
+const sWellMass = document.getElementById('sWellMass');
+const vWellMass = document.getElementById('vWellMass');
+sWellMass.addEventListener('input', () => vWellMass.textContent = sWellMass.value);
+
+// ============================================================================
+// SECTION 4: GAME STATE — All the data that changes while the sim runs
+// ============================================================================
+
+// The ball — our main physics object
+let ball = {
+  x: 0,          // horizontal position (pixels from left)
+  y: 0,          // vertical position (pixels from top — NOTE: y increases downward!)
+  vx: 0,         // horizontal velocity (pixels per frame, positive = right)
+  vy: 0,         // vertical velocity (pixels per frame, positive = DOWN)
+  active: false  // is the ball currently simulating?
+};
+
+let trail = [];          // Array of {x, y} points showing where the ball has been
+let bounceFlashes = [];  // Array of {x, y, age} for the yellow flash effect on bounce
+let bounceCount = 0;     // How many times the ball has bounced
+let gravWells = [];      // Array of {x, y, mass} — gravity wells placed by right-click
+
+// Interaction state machine: idle → placed → launched
+let phase = 'idle';      // 'idle' = waiting for click, 'placed' = ball placed, 'launched' = simulating
+let placePos = null;     // Where the ball was placed {x, y}
+let aimPos = null;       // Where the mouse is during aiming {x, y}
+
+// ============================================================================
+// SECTION 5: SCENARIOS — Preset configurations for different planets/situations
+//
+// To add a new scenario:
+//   1. Add an entry here with values for each slider
+//   2. Add a <button class="scene-btn" data-scene="yourName"> in the HTML
+//   That's it! The button wiring is automatic (see bottom of file).
+// ============================================================================
+
+const SCENARIOS = {
+  earth:     { grav: 9.81,  bounce: 40, fric: 25, wind: 0,   power: 50, timeScale: 1, drag: 0.2 },
+  moon:      { grav: 1.62,  bounce: 50, fric: 10, wind: 0,   power: 50, timeScale: 1, drag: 0 },
+  mars:      { grav: 3.72,  bounce: 45, fric: 20, wind: 0,   power: 50, timeScale: 1, drag: 0.05 },
+  jupiter:   { grav: 24.79, bounce: 30, fric: 30, wind: 0,   power: 50, timeScale: 1, drag: 0.5 },
+  space:     { grav: 0,     bounce: 95, fric: 0,  wind: 0,   power: 30, timeScale: 1, drag: 0 },
+  superball: { grav: 9.81,  bounce: 95, fric: 5,  wind: 0,   power: 70, timeScale: 1, drag: 0.1 },
+  windstorm: { grav: 9.81,  bounce: 40, fric: 25, wind: 4.5, power: 50, timeScale: 1, drag: 0.3 },
+  ice:       { grav: 9.81,  bounce: 40, fric: 1,  wind: 0,   power: 50, timeScale: 1, drag: 0.05 },
+  mud:       { grav: 9.81,  bounce: 5,  fric: 90, wind: 0,   power: 50, timeScale: 1, drag: 0.8 },
+};
+
+// Set all sliders to match a scenario
+function applyScenario(name) {
+  const s = SCENARIOS[name];
+  if (!s) return;
+  // Loop through each property and set the matching slider
+  for (const [key, value] of Object.entries(s)) {
+    if (SLIDERS[key]) {
+      SLIDERS[key].el.value = value;
+      SLIDERS[key].out.textContent = SLIDERS[key].fmt(value);
+    }
+  }
+}
+
+// ============================================================================
+// SECTION 6: TUTORIAL — Step-by-step instructions shown on screen
+// ============================================================================
+
+let tutorialStep = 0;
+
+function showTutorial() {
+  const messages = [
+    '<span class="step-num">Step 1:</span> Click anywhere to place the ball',
+    '<span class="step-num">Step 2:</span> Drag your mouse to aim — then <span class="key">let go</span> to throw!',
+  ];
+  if (tutorialStep < messages.length) {
+    tutorial.innerHTML = messages[tutorialStep];
+    tutorial.style.opacity = '1';
+  } else {
+    tutorial.style.opacity = '0';  // Hide after launch
+  }
+}
+showTutorial();
+
+// ============================================================================
+// SECTION 7: INPUT HANDLING — Mouse clicks and right-clicks
+// ============================================================================
+
+// Helper: get mouse position relative to the canvas
+function getMousePos(event) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+}
+
+// LEFT CLICK DOWN — Place the ball
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;  // Only respond to left mouse button
+  const mouse = getMousePos(e);
+
+  if (phase === 'idle' || phase === 'launched') {
+    placePos = mouse;
+    aimPos = null;
+    ball.active = false;
+    trail = [];
+    bounceCount = 0;
+    phase = 'placed';
+    tutorialStep = 1;
+    showTutorial();
+  }
+});
+
+// MOUSE MOVE — Update aim direction while placing
+canvas.addEventListener('mousemove', e => {
+  if (phase !== 'placed') return;
+  aimPos = getMousePos(e);
+});
+
+// LEFT CLICK UP — Launch the ball!
+canvas.addEventListener('mouseup', e => {
+  if (phase !== 'placed') return;
+  const mouse = getMousePos(e);
+
+  // The launch direction is OPPOSITE to the drag direction
+  // (like pulling back a slingshot)
+  const dx = placePos.x - mouse.x;
+  const dy = placePos.y - mouse.y;
+
+  // Convert drag distance to velocity using the power slider
+  const power = param('power') / 100 * 0.08;
+
+  ball.x = placePos.x;
+  ball.y = placePos.y;
+  ball.vx = dx * power;  // Horizontal velocity
+  ball.vy = dy * power;  // Vertical velocity
+  ball.active = true;
+  trail = [];
+  bounceCount = 0;
+  phase = 'launched';
+  tutorialStep = 2;
+  showTutorial();
+  window._frame = 0;
+  window._idleFrames = 0;
+  console.log(`%c🚀 LAUNCH`, 'color: #7fdbca; font-weight: bold; font-size: 14px');
+  console.log(`  ball: { x: ${ball.x.toFixed(2)}, y: ${ball.y.toFixed(2)}, vx: ${ball.vx.toFixed(4)}, vy: ${ball.vy.toFixed(4)} }`);
+  console.log(`  params: { grav: ${param('grav')}, bounce: ${param('bounce')}, fric: ${param('fric')}, wind: ${param('wind')}, power: ${param('power')}, timeScale: ${param('timeScale')}, drag: ${param('drag')} }`);
+  if (gravWells.length > 0) {
+    console.log(`  wells: [${gravWells.map((w,i) => `\n    ${i}: { x: ${w.x.toFixed(1)}, y: ${w.y.toFixed(1)}, mass: ${w.mass} }`).join('')}\n  ]`);
+  }
+});
+
+// RIGHT CLICK — Place a gravity well
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();  // Don't show the browser's right-click menu
+  const mouse = getMousePos(e);
+  gravWells.push({
+    x: mouse.x,
+    y: mouse.y,
+    mass: +sWellMass.value
+  });
+  const w = gravWells[gravWells.length - 1];
+  console.log(`%c🪐 WELL PLACED #${gravWells.length}`, 'color: #c084fc; font-weight: bold');
+  console.log(`  { x: ${w.x.toFixed(1)}, y: ${w.y.toFixed(1)}, mass: ${w.mass} }`);
+});
+
+// RESET BUTTON — Clear everything and start over
+document.getElementById('btnReset').addEventListener('click', () => {
+  ball.active = false;
+  trail = [];
+  bounceFlashes = [];
+  bounceCount = 0;
+  gravWells = [];
+  phase = 'idle';
+  tutorialStep = 0;
+  showTutorial();
+  applyScenario('earth');
+});
+
+// CLEAR WELLS BUTTON — Remove gravity wells but keep the ball going
+document.getElementById('btnClearWells').addEventListener('click', () => {
+  gravWells = [];
+});
+
+// Wire up all scenario buttons automatically
+for (const btn of document.querySelectorAll('.scene-btn')) {
+  btn.addEventListener('click', () => applyScenario(btn.dataset.scene));
+}
+
+// ============================================================================
+// SECTION 8: PHYSICS — The step() function runs every frame (60 times/second)
+//
+// This is the HEART of the simulation. Every frame we:
+//   1. Apply gravity (accelerates the ball downward)
+//   2. Apply wind (accelerates the ball sideways)
+//   3. Apply gravity wells (pull the ball toward them)
+//   4. Move the ball (add velocity to position)
+//   5. Check for collisions with walls/floor and bounce
+// ============================================================================
+
+function step() {
+  if (!ball.active) return;
+
+  // Read current slider values
+  const timeScale   = param('timeScale');
+  const gravity     = param('grav') * PPM * DT * timeScale;
+  const restitution = param('bounce') / 100;
+  const friction    = param('fric') / 100;
+  const wind        = param('wind') * PPM * DT * timeScale;
+
+  // --- IDLE DETECTION ---
+  // If the ball is barely moving for 15 frames (~250ms), pause the sim
+  const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+  const onFloor = (
+    ball.y + RADIUS >= simBottom() &&
+    ball.vy >= 0 &&
+    ball.vy <= gravity
+  );
+
+  if (onFloor && speed < 0.05 && gravWells.length === 0 && Math.abs(wind) < 0.01) {
+    if (!window._idleFrames) window._idleFrames = 0;
+    window._idleFrames++;
+    if (window._idleFrames === 15) {
+      console.log(`%c⏸ SIMULATION PAUSED — ball at rest. Click to relaunch.`, 'color: #ffd93d; font-weight: bold');
+      console.log(`  Final state: pos=(${ball.x.toFixed(1)}, ${ball.y.toFixed(1)}) vel=(${ball.vx.toFixed(6)}, ${ball.vy.toFixed(6)})`);
+      ball.vx = 0;
+      ball.vy = 0;
+    }
+    if (window._idleFrames >= 15) return; // Stop stepping
+  } else {
+    window._idleFrames = 0;
+  }
+
+  // --- FRAME COUNTER ---
+  if (!window._frame) window._frame = 0;
+  window._frame++;
+  const _log = (window._frame % 60 === 0); // Log once per second
+
+  // --- FULL STATE LOG (replayable) ---
+  if (_log) {
+    console.log(`%c━━━ FRAME ${window._frame} ━━━`, 'color: #7fdbca; font-weight: bold');
+    console.log(`  ball: { x: ${ball.x.toFixed(2)}, y: ${ball.y.toFixed(2)}, vx: ${ball.vx.toFixed(4)}, vy: ${ball.vy.toFixed(4)} }`);
+    console.log(`  speed: ${speed.toFixed(2)} px/f | onFloor: ${onFloor}`);
+    console.log(`  params: { grav: ${param('grav')}, bounce: ${param('bounce')}, fric: ${param('fric')}, wind: ${param('wind')}, power: ${param('power')}, timeScale: ${timeScale}, drag: ${param('drag')} }`);
+    console.log(`  bounds: { L: ${simLeft()}, R: ${simRight()}, T: ${simTop()}, B: ${simBottom()} }`);
+    console.log(`  computed: { gravity: ${gravity.toFixed(4)}, restitution: ${restitution.toFixed(2)}, friction: ${friction.toFixed(2)}, wind: ${wind.toFixed(4)} }`);
+    if (gravWells.length > 0) {
+      console.log(`  wells: [`);
+      gravWells.forEach((w, i) => console.log(`    ${i}: { x: ${w.x.toFixed(1)}, y: ${w.y.toFixed(1)}, mass: ${w.mass} }`));
+      console.log(`  ]`);
+    }
+  }
+
+  // --- APPLY FORCES ---
+  if (!onFloor) {
+    ball.vy += gravity;
+  }
+  ball.vx += wind;
+
+  // Gravity wells
+  for (let wi = 0; wi < gravWells.length; wi++) {
+    const well = gravWells[wi];
+    const dx = well.x - ball.x;
+    const dy = well.y - ball.y;
+    const distSquared = dx * dx + dy * dy;
+    const dist = Math.sqrt(distSquared);
+
+    if (dist < 10) {
+      // Ball has been captured by the gravity well!
+      if (_log) console.log(`  WELL[${wi}]: CAPTURED (dist=${dist.toFixed(1)})`);
+      ball.x = well.x;
+      ball.y = well.y;
+      ball.vx = 0;
+      ball.vy = 0;
+      console.log(`%c🪐 CAPTURED by well #${wi}! Ball absorbed at (${well.x}, ${well.y})`, 'color: #c084fc; font-weight: bold');
+      return; // Stop physics for this frame
+    }
+
+    // Clamp minimum distance so force can't spike to insane values
+    // At 40px min, max force with mass 2000 = 5*2000/1600 = 6.25 per frame
+    const clampedDist = Math.max(dist, 40);
+    const clampedDistSq = clampedDist * clampedDist;
+
+    // Newton's gravity: F = G × M / r²
+    // G=5 tuned so mass 500 at 200px = gentle pull, mass 2000 at 80px = strong orbit
+    const force = (5 * well.mass) / clampedDistSq;
+    const fx = (dx / dist) * force * timeScale;
+    const fy = (dy / dist) * force * timeScale;
+
+    if (_log) console.log(`  WELL[${wi}]: dist=${dist.toFixed(1)} clamp=${clampedDist.toFixed(0)} force=${force.toFixed(4)} → Δvx=${fx.toFixed(4)} Δvy=${fy.toFixed(4)}`);
+
+    ball.vx += fx;
+    ball.vy += fy;
+  }
+
+  if (_log && gravWells.length > 0) {
+    console.log(`  POST-WELLS: vx=${ball.vx.toFixed(4)} vy=${ball.vy.toFixed(4)} speed=${Math.sqrt(ball.vx*ball.vx+ball.vy*ball.vy).toFixed(2)}`);
+  }
+
+  // --- AIR DRAG ---
+  // Air resistance — force proportional to velocity squared.
+  // Naturally limits top speed (terminal velocity) instead of a hard cap.
+  // Formula: V = V × (1 - drag × speed)
+  const drag = param('drag') / 100;  // slider 0-1 → 0.00-0.01
+  const currentSpeed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+  if (currentSpeed > 0.1 && drag > 0) {
+    const dragFactor = Math.max(1 - drag * currentSpeed * timeScale, 0.5);
+    ball.vx *= dragFactor;
+    ball.vy *= dragFactor;
+    if (_log) console.log(`  DRAG: coeff=${drag.toFixed(4)} speed=${currentSpeed.toFixed(2)} factor=${dragFactor.toFixed(4)}`);
+  }
+
+  // --- MOVE ---
+  ball.x += ball.vx;
+  if (!onFloor) ball.y += ball.vy;
+
+  if (onFloor) {
+    ball.vx *= (1 - friction);
+    if (Math.abs(ball.vx) < 0.01) ball.vx = 0;
+  }
+
+  // --- COLLISIONS ---
+  if (ball.y + RADIUS > simBottom()) {
+    const impactVy = ball.vy;
+    ball.y = simBottom() - RADIUS;
+    if (impactVy > gravity + 0.5) {
+      console.log(`%cBOUNCE floor | impactVy=${impactVy.toFixed(2)} → vy=${(-impactVy * restitution).toFixed(2)}`, 'color: #ff6b6b');
+      ball.vy = -impactVy * restitution;
+      bounceFlashes.push({ x: ball.x, y: simBottom(), age: 0 });
+      bounceCount++;
+    } else {
+      ball.vy = 0;
+    }
+  }
+
+  if (ball.y - RADIUS < simTop()) {
+    console.log(`%cBOUNCE ceiling | vy=${ball.vy.toFixed(2)}`, 'color: #ff6b6b');
+    ball.y = simTop() + RADIUS;
+    ball.vy = -ball.vy * restitution;
+    bounceFlashes.push({ x: ball.x, y: simTop(), age: 0 });
+    bounceCount++;
+  }
+
+  if (ball.x + RADIUS > simRight()) {
+    console.log(`%cBOUNCE right wall | vx=${ball.vx.toFixed(2)}`, 'color: #ff6b6b');
+    ball.x = simRight() - RADIUS;
+    ball.vx = -ball.vx * restitution;
+    bounceFlashes.push({ x: simRight(), y: ball.y, age: 0 });
+    bounceCount++;
+  }
+
+  if (ball.x - RADIUS < simLeft()) {
+    console.log(`%cBOUNCE left wall | vx=${ball.vx.toFixed(2)}`, 'color: #ff6b6b');
+    ball.x = simLeft() + RADIUS;
+    ball.vx = -ball.vx * restitution;
+    bounceFlashes.push({ x: simLeft(), y: ball.y, age: 0 });
+    bounceCount++;
+  }
+
+  // --- TRAIL & EFFECTS ---
+  trail.push({ x: ball.x, y: ball.y });
+  if (trail.length > 500) trail.shift();
+
+  for (let i = bounceFlashes.length - 1; i >= 0; i--) {
+    bounceFlashes[i].age++;
+    if (bounceFlashes[i].age > 30) bounceFlashes.splice(i, 1);
+  }
+}
+
+// ============================================================================
+// SECTION 9: DRAWING HELPERS — Reusable functions for drawing shapes
+// ============================================================================
+
+// Draw an arrow from (x1,y1) to (x2,y2) with a triangular arrowhead
+function drawArrow(x1, y1, x2, y2, color, lineWidth) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  if (length < 2) return;  // Too short to draw
+
+  // Unit vector (direction with length 1)
+  const ux = dx / length;
+  const uy = dy / length;
+
+  // Draw the line
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  // Draw the arrowhead (a small triangle at the tip)
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);                                    // Tip
+  ctx.lineTo(x2 - ux * 10 + uy * 5, y2 - uy * 10 - ux * 5);  // Left wing
+  ctx.lineTo(x2 - ux * 10 - uy * 5, y2 - uy * 10 + ux * 5);  // Right wing
+  ctx.fill();
+}
+
+// Draw a filled circle
+function drawCircle(x, y, radius, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Draw a stroked (outline) circle
+function drawRing(x, y, radius, color, lineWidth) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+// Convert ball position from screen pixels to meters for display
+function ballPosMeters() {
+  return {
+    x: ((ball.x - simLeft()) / PPM).toFixed(1),
+    y: ((simBottom() - ball.y) / PPM).toFixed(1)
+  };
+}
+
+// Convert ball velocity from pixels/frame to meters/second for display
+function ballVelMs() {
+  return {
+    x: (ball.vx / (PPM * DT)).toFixed(1),
+    y: (-ball.vy / (PPM * DT)).toFixed(1)  // Flip Y so up is positive
+  };
+}
+
+// ============================================================================
+// SECTION 10: DRAW — Paint everything on screen (runs 60 times per second)
+//
+// Drawing order matters! Things drawn later appear ON TOP of things drawn earlier.
+// That's why we draw: grid → axes → wells → trail → ball → UI overlay
+// ============================================================================
+
+function draw() {
+  // Clear the entire canvas (erase last frame)
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // --- BACKGROUND GRID ---
+  // Light lines every 1 meter to show scale
+  ctx.strokeStyle = '#1a1a3e';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < canvas.width; x += PPM) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  }
+  for (let y = 0; y < canvas.height; y += PPM) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  }
+
+  // --- X AND Y AXES (these ARE the floor and left wall) ---
+  drawAxes();
+
+  // --- GRAVITY WELLS ---
+  drawGravityWells();
+
+  // --- BOUNCE FLASHES ---
+  if (cbBounceFlash.checked) {
+    for (const flash of bounceFlashes) {
+      const alpha = 1 - flash.age / 30;  // Fade out over 30 frames
+      const radius = 20 + flash.age * 2;  // Expand as it fades
+      drawCircle(flash.x, flash.y, radius, `rgba(255,220,100,${alpha * 0.4})`);
+    }
+  }
+
+  // --- TRAIL ---
+  if (cbTrail.checked && trail.length > 1) {
+    for (let i = 1; i < trail.length; i++) {
+      const alpha = i / trail.length * 0.5;  // Newer points are brighter
+      ctx.strokeStyle = `rgba(127,219,202,${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
+      ctx.lineTo(trail[i].x, trail[i].y);
+      ctx.stroke();
+    }
+  }
+
+  // --- AIMING STATE ---
+  // When the ball is placed but not yet launched, show the aiming UI
+  if (phase === 'placed' && placePos) {
+    drawAimingUI();
+  }
+
+  // --- BALL ---
+  if (ball.active) {
+    drawBall();
+  }
+
+  // --- LIVE FORMULA OVERLAY ---
+  if (ball.active) {
+    drawFormulaOverlay();
+  }
+}
+
+// ============================================================================
+// SECTION 11: DRAW SUB-FUNCTIONS — Each draws one part of the scene
+// ============================================================================
+
+function drawAxes() {
+  const L = simLeft(), R = simRight(), T = simTop(), B = simBottom();
+
+  // Sim area border (subtle)
+  ctx.strokeStyle = '#ffffff11';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(L, T, R - L, B - T);
+
+  // X axis — red, along the floor (bottom of sim area)
+  ctx.strokeStyle = '#ff6b6b55';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(L, B); ctx.lineTo(R, B); ctx.stroke();
+  // Arrowhead
+  ctx.fillStyle = '#ff6b6b88';
+  ctx.beginPath(); ctx.moveTo(R, B); ctx.lineTo(R - 10, B - 5); ctx.lineTo(R - 10, B + 5); ctx.fill();
+  // Label — in the margin below the sim area
+  ctx.fillStyle = '#ff6b6b';
+  ctx.font = 'bold 12px Segoe UI';
+  ctx.fillText('X (meters →)', R - 100, B + 20);
+  // Tick marks every 5 meters — labels below the floor
+  ctx.fillStyle = '#ff6b6b88';
+  ctx.font = '10px Segoe UI';
+  for (let m = 5; m <= Math.floor((R - L) / PPM); m += 5) {
+    const px = L + m * PPM;
+    if (px > R - 10) break;
+    ctx.beginPath(); ctx.moveTo(px, B); ctx.lineTo(px, B + 6); ctx.stroke();
+    ctx.fillText(m, px - 6, B + 18);
+  }
+
+  // Y axis — green, along the left wall
+  ctx.strokeStyle = '#7fdbca55';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(L, B); ctx.lineTo(L, T); ctx.stroke();
+  // Arrowhead
+  ctx.fillStyle = '#7fdbca88';
+  ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L - 5, T + 10); ctx.lineTo(L + 5, T + 10); ctx.fill();
+  // Label — in the margin left of the sim area (rotated)
+  ctx.save();
+  ctx.fillStyle = '#7fdbca';
+  ctx.font = 'bold 12px Segoe UI';
+  ctx.translate(12, T + 90);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Y (meters ↑)', 0, 0);
+  ctx.restore();
+  // Tick marks every 5 meters — labels left of the wall
+  ctx.fillStyle = '#7fdbca88';
+  ctx.font = '10px Segoe UI';
+  for (let m = 5; m <= Math.floor((B - T) / PPM); m += 5) {
+    const py = B - m * PPM;
+    if (py < T + 5) break;
+    ctx.beginPath(); ctx.moveTo(L, py); ctx.lineTo(L - 6, py); ctx.stroke();
+    ctx.fillText(m, L - 24, py + 4);
+  }
+
+  // Origin label
+  ctx.fillStyle = '#ffffff44';
+  ctx.font = '10px Segoe UI';
+  ctx.fillText('0', L - 12, B + 14);
+}
+
+function drawGravityWells() {
+  for (const well of gravWells) {
+    // Concentric rings showing the gravity field — scaled to mass
+    // More mass = bigger rings, spread further apart
+    const maxRing = 50 + (well.mass / 2000) * 250;  // 50px at min mass, 300px at max
+    const ringStep = 15 + (well.mass / 2000) * 25;   // tighter rings for small, wider for big
+    for (let r = ringStep; r < maxRing; r += ringStep) {
+      const alpha = 0.18 * (1 - r / maxRing);
+      drawRing(well.x, well.y, r, `rgba(192,132,252,${alpha})`, 1);
+    }
+
+    // Glowing halo — also scaled to mass
+    const haloR = 20 + (well.mass / 2000) * 40;
+    const grad = ctx.createRadialGradient(well.x, well.y, 0, well.x, well.y, haloR);
+    grad.addColorStop(0, 'rgba(192,132,252,0.3)');
+    grad.addColorStop(1, 'rgba(192,132,252,0)');
+    drawCircle(well.x, well.y, haloR, grad);
+
+    // Solid core — size scales with mass
+    const coreRadius = 6 + (well.mass / 2000) * 10;
+    drawCircle(well.x, well.y, coreRadius, '#c084fc');
+    drawCircle(well.x, well.y, coreRadius * 0.4, '#e0d0ff');  // Bright center
+
+    // Mass label
+    ctx.fillStyle = 'rgba(192,132,252,0.7)';
+    ctx.font = '11px Segoe UI';
+    ctx.fillText(`m=${well.mass}`, well.x + coreRadius + 4, well.y - coreRadius - 2);
+
+    // Purple arrow showing pull force on the ball
+    if (ball.active && cbForces.checked) {
+      const dx = well.x - ball.x;
+      const dy = well.y - ball.y;
+      const distSq = dx * dx + dy * dy;
+      const dist = Math.sqrt(distSq);
+      if (dist > 10 && dist < 500) {
+        const force = (5 * well.mass) / (Math.max(dist, 40) ** 2);
+        const arrowScale = 8;
+        const fx = (dx / dist) * force * arrowScale;
+        const fy = (dy / dist) * force * arrowScale;
+        if (Math.sqrt(fx * fx + fy * fy) > 1) {
+          drawArrow(ball.x, ball.y, ball.x + fx, ball.y + fy, '#c084fc', 2);
+        }
+      }
+    }
+  }
+}
+
+function drawAimingUI() {
+  // Show the ball at the placement position
+  drawCircle(placePos.x, placePos.y, RADIUS, '#fff');
+
+  // Pulsing ring to show "you placed it, now drag"
+  const pulse = 1 + Math.sin(Date.now() / 150) * 0.3;
+  drawRing(placePos.x, placePos.y, RADIUS + 8 * pulse, 'rgba(127,219,202,0.5)', 2);
+
+  // If the mouse has moved, show the aiming arrow
+  if (aimPos) {
+    const dx = placePos.x - aimPos.x;
+    const dy = placePos.y - aimPos.y;
+
+    // Dashed line from mouse to ball
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(aimPos.x, aimPos.y); ctx.lineTo(placePos.x, placePos.y); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Red arrow showing launch direction
+    drawArrow(placePos.x, placePos.y, placePos.x + dx, placePos.y + dy, 'rgba(255,100,100,0.8)', 3);
+  }
+}
+
+function drawBall() {
+  // Glow behind the ball
+  drawCircle(ball.x, ball.y, RADIUS + 6, 'rgba(127,219,202,0.12)');
+  // The ball itself
+  drawCircle(ball.x, ball.y, RADIUS, '#fff');
+
+  // Dashed crosshair lines to the axes (shows coordinates visually)
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(ball.x, ball.y); ctx.lineTo(ball.x, simBottom()); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ball.x, ball.y); ctx.lineTo(simLeft(), ball.y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Coordinate label next to the ball
+  const pos = ballPosMeters();
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = '11px Segoe UI';
+  ctx.fillText(`(${pos.x}, ${pos.y})`, ball.x + RADIUS + 6, ball.y - RADIUS - 4);
+
+  // Force arrows (when enabled)
+  if (cbForces.checked) {
+    const arrowScale = 8;
+
+    // Red arrow: gravity (pointing down)
+    const gForce = param('grav') * PPM * DT;
+    if (gForce > 0.01) {
+      drawArrow(ball.x, ball.y, ball.x, ball.y + gForce * arrowScale, '#ff6b6b', 2);
+    }
+
+    // Yellow arrow: velocity (direction the ball is moving)
+    const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+    if (speed > 0.3) {
+      drawArrow(ball.x, ball.y, ball.x + ball.vx * arrowScale, ball.y + ball.vy * arrowScale, '#ffd93d', 2);
+    }
+
+    // Blue arrow: wind (horizontal)
+    const windForce = param('wind') * PPM * DT;
+    if (Math.abs(windForce) > 0.01) {
+      drawArrow(ball.x, ball.y, ball.x + windForce * arrowScale, ball.y, '#6bcfff', 2);
+    }
+
+    // Purple arrows for gravity wells are drawn in drawGravityWells()
+  }
+}
+
+function drawFormulaOverlay() {
+  // Show the physics formulas with live values plugged in
+  const g = param('grav');
+  const e = (param('bounce') / 100).toFixed(2);
+  const mu = (param('fric') / 100).toFixed(2);
+  const w = param('wind').toFixed(1);
+  const vel = ballVelMs();
+  const pos = ballPosMeters();
+  const dragCoeff = (param('drag') / 100).toFixed(4);
+
+  const lines = [
+    `Position:   x = ${pos.x} m    y = ${pos.y} m`,
+    `Velocity:   Vx = ${vel.x} m/s    Vy = ${vel.y} m/s`,
+    ``,
+    `Gravity:    Vy += g × Δt  →  Vy += ${g} × ${DT.toFixed(4)}`,
+    `Wind:       Vx += wind × Δt  →  Vx += ${w} × ${DT.toFixed(4)}`,
+    `Drag:       V = V × (1 − ${dragCoeff} × speed)`,
+    `Movement:   x += Vx × Δt     y += Vy × Δt`,
+    ``,
+    `On bounce:  Vy = −Vy × e  (e = ${e})`,
+    `Friction:   Vx = Vx × (1 − μ)  (μ = ${mu})`,
+  ];
+
+  // Add gravity well info if any exist
+  if (gravWells.length > 0) {
+    lines.push(``);
+    lines.push(`Wells:      F = mass / dist²  (${gravWells.length} active)`);
+  }
+
+  const boxWidth = 390;
+  const boxHeight = lines.length * 18 + 16;
+  const boxX = canvas.width / 2 - boxWidth / 2;
+  const boxY = 12;
+
+  // Semi-transparent background box
+  ctx.fillStyle = 'rgba(15,15,35,0.8)';
+  ctx.strokeStyle = 'rgba(127,219,202,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
+  ctx.fill();
+  ctx.stroke();
+
+  // Formula text
+  ctx.fillStyle = '#ccc';
+  ctx.font = '13px monospace';
+  lines.forEach((line, i) => {
+    ctx.fillText(line, boxX + 12, boxY + 18 + i * 18);
+  });
+}
+
+// ============================================================================
+// SECTION 12: READOUT — Update the side panel numbers
+// ============================================================================
+
+function updateReadout() {
+  if (!ball.active) {
+    readout.innerHTML = '<b>Speed:</b> —<br><b>Direction:</b> —<br><b>Bounces:</b> 0';
+    return;
+  }
+
+  const vel = ballVelMs();
+  const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y).toFixed(1);
+  const angle = Math.atan2(+vel.y, +vel.x) * 180 / Math.PI;
+  const height = ((simBottom() - ball.y - RADIUS) / PPM).toFixed(1);
+
+  readout.innerHTML =
+    `<b>Speed:</b> ${speed} m/s<br>` +
+    `<b>Height:</b> ${height} m<br>` +
+    `<b>Direction:</b> ${angle.toFixed(0)}°<br>` +
+    `<b>Bounces:</b> ${bounceCount}` +
+    (gravWells.length > 0 ? `<br><b>Wells:</b> ${gravWells.length}` : '');
+}
+
+// ============================================================================
+// SECTION 13: THE GAME LOOP — Runs forever, 60 times per second
+//
+// This is what makes it a "real-time simulation" instead of a static picture.
+// requestAnimationFrame tells the browser: "call this function before the
+// next screen refresh" — which is usually 60 times per second.
+// ============================================================================
+
+function gameLoop() {
+  step();          // 1. Update physics
+  draw();          // 2. Draw everything
+  updateReadout(); // 3. Update the numbers
+
+  // Schedule the next frame
+  requestAnimationFrame(gameLoop);
+}
+
+// START THE SIMULATION!
+gameLoop();
+
+</script>
+</body>
+</html>
