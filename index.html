@@ -491,6 +491,7 @@ let trail = [];          // Array of {x, y} points showing where the ball has be
 let bounceFlashes = [];  // Array of {x, y, age} for the yellow flash effect on bounce
 let bounceCount = 0;     // How many times the ball has bounced
 let gravWells = [];      // Array of {x, y, mass} — gravity wells placed by right-click
+let draggingWell = null; // Index of well being dragged, or null
 
 // Interaction state machine: idle → placed → launched
 let phase = 'idle';      // 'idle' = waiting for click, 'placed' = ball placed, 'launched' = simulating
@@ -614,16 +615,36 @@ canvas.addEventListener('mouseup', e => {
   log.launch();
 });
 
-// RIGHT CLICK — Place a gravity well
-canvas.addEventListener('contextmenu', e => {
-  e.preventDefault();  // Don't show the browser's right-click menu
+// RIGHT CLICK — Place or drag a gravity well
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 2) return; // Right click only
   const mouse = getMousePos(e);
-  gravWells.push({
-    x: mouse.x,
-    y: mouse.y,
-    mass: +sWellMass.value
-  });
+  // Check if clicking on an existing well to drag it
+  for (let i = 0; i < gravWells.length; i++) {
+    const dx = mouse.x - gravWells[i].x, dy = mouse.y - gravWells[i].y;
+    if (Math.sqrt(dx * dx + dy * dy) < wellRadius(gravWells[i].mass) + 20) {
+      draggingWell = i;
+      return;
+    }
+  }
+  // Not on a well — place a new one
+  gravWells.push({ x: mouse.x, y: mouse.y, mass: +sWellMass.value });
+  draggingWell = gravWells.length - 1; // Start dragging the new well
   log.well(`PLACED #${gravWells.length}`);
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (draggingWell !== null) {
+    const mouse = getMousePos(e);
+    gravWells[draggingWell].x = mouse.x;
+    gravWells[draggingWell].y = mouse.y;
+  }
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (e.button === 2) draggingWell = null;
 });
 
 // RESET BUTTON — Clear everything and start over
@@ -711,12 +732,21 @@ canvas.addEventListener('touchstart', e => {
     return;
   }
   if (e.touches.length === 2) {
-    // Two-finger tap = place gravity well at midpoint
+    // Two-finger tap = place or start dragging a gravity well
     e.preventDefault();
     const rect = canvas.getBoundingClientRect();
     const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
     const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+    // Check if on an existing well
+    for (let i = 0; i < gravWells.length; i++) {
+      const dx = mx - gravWells[i].x, dy = my - gravWells[i].y;
+      if (Math.sqrt(dx * dx + dy * dy) < wellRadius(gravWells[i].mass) + 20) {
+        draggingWell = i;
+        return;
+      }
+    }
     gravWells.push({ x: mx, y: my, mass: +sWellMass.value });
+    draggingWell = gravWells.length - 1;
     log.well(`PLACED #${gravWells.length}`);
     return;
   }
@@ -738,6 +768,13 @@ canvas.addEventListener('touchstart', e => {
 });
 
 canvas.addEventListener('touchmove', e => {
+  // Two-finger drag = move gravity well
+  if (draggingWell !== null && e.touches.length === 2) {
+    const rect = canvas.getBoundingClientRect();
+    gravWells[draggingWell].x = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+    gravWells[draggingWell].y = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+    return;
+  }
   if (phase !== 'placed' || e.touches.length !== 1) return;
   const touch = e.touches[0];
   const rect = canvas.getBoundingClientRect();
@@ -745,6 +782,9 @@ canvas.addEventListener('touchmove', e => {
 });
 
 canvas.addEventListener('touchend', e => {
+  if (draggingWell !== null && e.touches.length < 2) {
+    draggingWell = null;
+  }
   if (phase !== 'placed') return;
   // Use last known aimPos for the launch
   if (!aimPos) return;
@@ -1177,6 +1217,20 @@ function draw() {
 
   // --- LIVE FORMULA OVERLAY ---
   drawFormulaOverlay();
+
+  // --- PAUSE OVERLAY ---
+  if (window._paused) {
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 36px Segoe UI';
+    ctx.textAlign = 'center';
+    ctx.fillText('⏸ PAUSED', canvas.width / 2, canvas.height / 2);
+    ctx.font = '16px Segoe UI';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('Press Space to resume', canvas.width / 2, canvas.height / 2 + 36);
+    ctx.textAlign = 'start'; // Reset
+  }
 }
 
 // ============================================================================
