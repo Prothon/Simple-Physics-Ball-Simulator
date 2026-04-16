@@ -259,7 +259,7 @@
   <div class="group">
     <b style="color:#c084fc; font-size:13px;">🪐 Gravity Wells</b>
     <div class="unit"><kbd>Right Click</kbd> to place · <kbd>X</kbd> to clear all</div>
-    <label>Well Mass <span class="val" id="vWellMass">200</span>
+    <label>Well Mass <span class="val" id="vWellMass">50</span>
       <div class="tip">
         A gravity well is like a planet — it pulls the ball toward it. The heavier it is, the stronger the pull. This uses Newton's law of gravity!<br>
         <div class="formula">Force = mass ÷ distance²</div>
@@ -267,7 +267,7 @@
         The closer the ball gets, the MUCH stronger the pull (because distance is squared).
       </div>
     </label>
-    <input type="range" id="sWellMass" min="50" max="10000" step="50" value="200">
+    <input type="range" id="sWellMass" min="50" max="10000" step="50" value="50">
     <button id="btnClearWells" style="width:100%; margin-top:4px; background:#c084fc;">🗑️ Clear All Wells</button>
   </div>
 
@@ -666,8 +666,8 @@ document.getElementById('btnReset').addEventListener('click', () => {
 // CLEAR WELLS BUTTON — Remove gravity wells but keep the ball going
 document.getElementById('btnClearWells').addEventListener('click', () => {
   gravWells = [];
-  sWellMass.value = 200;
-  vWellMass.textContent = '200';
+  sWellMass.value = 50;
+  vWellMass.textContent = '50';
 });
 
 // Wire up all scenario buttons automatically
@@ -682,8 +682,8 @@ document.addEventListener('keydown', e => {
   const key = e.key.toLowerCase();
   if (key === 'x') {                          // X = clear wells
     gravWells = [];
-    sWellMass.value = 200;
-    vWellMass.textContent = '200';
+    sWellMass.value = 50;
+    vWellMass.textContent = '50';
   } else if (key === 'r') {                    // R = full reset
     document.getElementById('btnReset').click();
   } else if (key === 'f') {                    // F = toggle forces
