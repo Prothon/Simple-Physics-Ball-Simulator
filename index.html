@@ -532,6 +532,8 @@ document.getElementById('btnReset').addEventListener('click', () => {
 // CLEAR WELLS BUTTON — Remove gravity wells but keep the ball going
 document.getElementById('btnClearWells').addEventListener('click', () => {
   gravWells = [];
+  sWellMass.value = 200;
+  vWellMass.textContent = '200';
 });
 
 // Wire up all scenario buttons automatically
