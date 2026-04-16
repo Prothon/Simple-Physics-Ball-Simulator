@@ -972,7 +972,8 @@ function step() {
 
         if (pullAway > 0.5) {
           // Another well is pulling hard enough — let the ball lift off
-          // Don't cancel velocity, don't apply friction
+          // This is like a moon being pulled away from a small asteroid by a planet.
+          // We skip resting contact so the gravitational force can move the ball.
         } else {
           // Actually resting — cancel inward velocity and apply friction
           if (vDotN < 0) {

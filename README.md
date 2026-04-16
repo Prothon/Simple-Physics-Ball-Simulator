@@ -244,6 +244,7 @@ The original was a personal project built to study physics formulas. Abstract eq
 4. **Corner trap** — Ball on floor against wall with wind, velocity oscillating near zero. Fixed with corner detection that zeroes velocity.
 5. **Well equilibrium bounce** — Ball bouncing on well surface at exactly 2.90 px/f forever. Gravity re-accelerated it to the same speed each bounce. Fixed with high resting threshold (5.0), 30% restitution on well surfaces, and soft interior gravity.
 6. **Stable orbit at clamp boundary** — Flat force clamp created a constant-force zone allowing perpetual orbits. Fixed with soft interior gravity (force drops linearly inside surface, like the shell theorem).
+7. **Stuck on small well** — Ball resting on a small well couldn't be pulled off by a larger nearby well. Fixed by checking net gravitational pull from other wells during resting contact.
 
 These are all real problems that real physics engines solve. The resting contact problem is why engines like Box2D have "sleeping" systems.
 
