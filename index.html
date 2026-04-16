@@ -6,7 +6,7 @@
 <title>Physics Sandbox — Grade 12 Remake</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100dvh; overflow: hidden; }
   canvas { background: #0f0f23; cursor: crosshair; display: block; }
   #panel {
     width: 280px; min-width: 280px; padding: 16px; background: #16213e;
@@ -393,6 +393,8 @@ function resize() {
 }
 resize();
 window.addEventListener('resize', resize);
+// iOS Safari fires this when the URL bar shows/hides
+window.visualViewport?.addEventListener('resize', resize);
 
 // ============================================================================
 // SECTION 2: CONSTANTS — Numbers that never change
