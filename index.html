@@ -925,15 +925,17 @@ function step() {
       const vDotN = ball.vx * nx + ball.vy * ny;
 
       if (vDotN < -1.0) {
-        // Real impact — bounce with energy loss
-        ball.vx -= (1 + restitution) * vDotN * nx;
-        ball.vy -= (1 + restitution) * vDotN * ny;
+        // Real impact — bounce with extra energy loss on well surfaces
+        // Wells constantly re-accelerate the ball, so we need aggressive damping
+        const wellRestitution = restitution * 0.5; // Half the normal bounciness
+        ball.vx -= (1 + wellRestitution) * vDotN * nx;
+        ball.vy -= (1 + wellRestitution) * vDotN * ny;
 
-        // Friction on tangential component
+        // Strong friction on tangential component to kill orbiting
         const tx = -ny, ty = nx;
         const vDotT = ball.vx * tx + ball.vy * ty;
-        ball.vx -= friction * vDotT * tx;
-        ball.vy -= friction * vDotT * ty;
+        ball.vx -= Math.min(friction + 0.15, 1) * vDotT * tx;
+        ball.vy -= Math.min(friction + 0.15, 1) * vDotT * ty;
 
         bounceFlashes.push({ x: ball.x, y: ball.y, age: 0 });
         bounceCount++;
@@ -944,11 +946,11 @@ function step() {
           ball.vx -= vDotN * nx;
           ball.vy -= vDotN * ny;
         }
-        // Friction slows tangential (orbiting) movement
+        // Friction slows tangential (orbiting) movement — aggressive to settle quickly
         const tx = -ny, ty = nx;
         const vDotT = ball.vx * tx + ball.vy * ty;
-        ball.vx -= friction * 0.3 * vDotT * tx;
-        ball.vy -= friction * 0.3 * vDotT * ty;
+        ball.vx -= Math.min(friction + 0.15, 1) * vDotT * tx;
+        ball.vy -= Math.min(friction + 0.15, 1) * vDotT * ty;
       }
     }
   }
