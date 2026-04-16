@@ -107,7 +107,7 @@
     </label>
     <input type="range" id="sWind" min="-5" max="5" step="0.1" value="0">
 
-    <label>🌫️ Air Drag <span class="val" id="vDrag">0.00%</span>
+    <label>🌫️ Air Drag <span class="val" id="vDrag">0.10%</span>
       <div class="tip">
         Air resistance! The faster the ball moves, the more the air slows it down. This is why skydivers reach a "terminal velocity" — they stop speeding up because drag equals gravity.<br>
         <div class="formula">V = V × (1 − drag × speed)</div>
@@ -115,12 +115,12 @@
         This is why a feather falls slowly but a bowling ball doesn't — the feather has more drag relative to its weight!
       </div>
     </label>
-    <input type="range" id="sDrag" min="0" max="1" step="0.01" value="0">
+    <input type="range" id="sDrag" min="0" max="1" step="0.01" value="0.1">
   </div>
 
   <div class="group">
     <b style="color:#7fdbca; font-size:12px; margin-bottom:6px; display:block;">🧱 Surface Properties</b>
-    <label>Bounciness <span class="val" id="vBounce">0.95</span>
+    <label>Bounciness <span class="val" id="vBounce">0.60</span>
       <div class="tip">
         This is called the "coefficient of restitution." It controls how much energy the ball keeps when it bounces. At 0, the ball goes SPLAT. At 1, it bounces back to the exact same height forever.<br>
         <div class="formula">Vy = −Vy × bounciness</div>
@@ -128,7 +128,7 @@
         The minus sign (−) is what makes the ball go UP after hitting the floor!
       </div>
     </label>
-    <input type="range" id="sBounce" min="0" max="100" step="1" value="95">
+    <input type="range" id="sBounce" min="0" max="100" step="1" value="60">
 
     <label>Friction <span class="val" id="vFric">0.00</span>
       <div class="tip">
@@ -171,7 +171,7 @@
   <div class="group">
     <b style="color:#c084fc; font-size:13px;">🪐 Gravity Wells</b>
     <div class="unit">Right-click to place a gravity well</div>
-    <label>Well Mass <span class="val" id="vWellMass">500</span>
+    <label>Well Mass <span class="val" id="vWellMass">1000</span>
       <div class="tip">
         A gravity well is like a planet — it pulls the ball toward it. The heavier it is, the stronger the pull. This uses Newton's law of gravity!<br>
         <div class="formula">Force = mass ÷ distance²</div>
@@ -179,7 +179,7 @@
         The closer the ball gets, the MUCH stronger the pull (because distance is squared).
       </div>
     </label>
-    <input type="range" id="sWellMass" min="50" max="2000" step="10" value="500">
+    <input type="range" id="sWellMass" min="50" max="10000" step="50" value="1000">
     <button id="btnClearWells" style="width:100%; margin-top:4px; background:#c084fc;">🗑️ Clear All Wells</button>
   </div>
 
@@ -332,7 +332,7 @@ const SCENARIOS = {
   moon:      { grav: 1.62,  bounce: 50, fric: 10, wind: 0,   power: 50, timeScale: 0.25, drag: 0 },
   mars:      { grav: 3.72,  bounce: 45, fric: 20, wind: 0,   power: 50, timeScale: 0.25, drag: 0.05 },
   jupiter:   { grav: 24.79, bounce: 30, fric: 30, wind: 0,   power: 50, timeScale: 0.25, drag: 0.5 },
-  space:     { grav: 0,     bounce: 95, fric: 0,  wind: 0,   power: 30, timeScale: 0.25, drag: 0 },
+  space:     { grav: 0,     bounce: 60, fric: 0,  wind: 0,   power: 30, timeScale: 0.25, drag: 0.1 },
   superball: { grav: 9.81,  bounce: 95, fric: 5,  wind: 0,   power: 70, timeScale: 0.25, drag: 0.1 },
   windstorm: { grav: 9.81,  bounce: 40, fric: 25, wind: 4.5, power: 50, timeScale: 0.25, drag: 0.3 },
   ice:       { grav: 9.81,  bounce: 40, fric: 1,  wind: 0,   power: 50, timeScale: 0.25, drag: 0.05 },
@@ -574,7 +574,7 @@ function step() {
 
     // Newton's gravity: F = G × M / r²
     // G=5 tuned so mass 500 at 200px = gentle pull, mass 2000 at 80px = strong orbit
-    const force = (5 * well.mass) / clampedDistSq;
+    const force = (10 * well.mass) / clampedDistSq;
     const fx = (dx / dist) * force * timeScale;
     const fy = (dy / dist) * force * timeScale;
 
@@ -889,7 +889,7 @@ function drawGravityWells() {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > 3) {
         const clampedDist = Math.max(dist, 40);
-        const force = (5 * well.mass) / (clampedDist * clampedDist);
+        const force = (10 * well.mass) / (clampedDist * clampedDist);
         // Large visual scale so arrows are visible even from far away
         // Min length of 20px so you can always see which direction the pull is
         const arrowLen = Math.max(Math.min(force * 500, 150, dist - 10), 20);
