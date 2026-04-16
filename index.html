@@ -610,6 +610,10 @@ function step() {
   if (onFloor && !liftedOff) {
     ball.vx *= (1 - friction);
     if (Math.abs(ball.vx) < 0.01) ball.vx = 0;
+    // If stuck in a corner (on floor + against a wall), zero everything
+    if ((ball.x - RADIUS <= simLeft() + 1 || ball.x + RADIUS >= simRight() - 1) && Math.abs(ball.vx) < 0.5) {
+      ball.vx = 0;
+    }
   }
 
   // --- COLLISIONS ---
@@ -627,27 +631,39 @@ function step() {
   }
 
   if (ball.y - RADIUS < simTop()) {
-    console.log(`%cBOUNCE ceiling | vy=${ball.vy.toFixed(2)}`, 'color: #ff6b6b');
+    const impactVy = -ball.vy;
     ball.y = simTop() + RADIUS;
-    ball.vy = -ball.vy * restitution;
-    bounceFlashes.push({ x: ball.x, y: simTop(), age: 0 });
-    bounceCount++;
+    if (impactVy > 1.0) {
+      ball.vy = -ball.vy * restitution;
+      bounceFlashes.push({ x: ball.x, y: simTop(), age: 0 });
+      bounceCount++;
+    } else {
+      ball.vy = 0;
+    }
   }
 
   if (ball.x + RADIUS > simRight()) {
-    console.log(`%cBOUNCE right wall | vx=${ball.vx.toFixed(2)}`, 'color: #ff6b6b');
+    const impactVx = ball.vx;
     ball.x = simRight() - RADIUS;
-    ball.vx = -ball.vx * restitution;
-    bounceFlashes.push({ x: simRight(), y: ball.y, age: 0 });
-    bounceCount++;
+    if (impactVx > 1.0) {
+      ball.vx = -impactVx * restitution;
+      bounceFlashes.push({ x: simRight(), y: ball.y, age: 0 });
+      bounceCount++;
+    } else {
+      ball.vx = 0; // Pressed against wall by wind/force — just stop
+    }
   }
 
   if (ball.x - RADIUS < simLeft()) {
-    console.log(`%cBOUNCE left wall | vx=${ball.vx.toFixed(2)}`, 'color: #ff6b6b');
+    const impactVx = -ball.vx;
     ball.x = simLeft() + RADIUS;
-    ball.vx = -ball.vx * restitution;
-    bounceFlashes.push({ x: simLeft(), y: ball.y, age: 0 });
-    bounceCount++;
+    if (impactVx > 1.0) {
+      ball.vx = -ball.vx * restitution;
+      bounceFlashes.push({ x: simLeft(), y: ball.y, age: 0 });
+      bounceCount++;
+    } else {
+      ball.vx = 0;
+    }
   }
 
   // --- TRAIL & EFFECTS ---
@@ -961,7 +977,7 @@ function drawBall() {
 
     // Yellow arrow: velocity (direction the ball is moving)
     const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
-    if (speed > 0.3) {
+    if (speed > 1.0) {
       drawArrow(ball.x, ball.y, ball.x + ball.vx * arrowScale, ball.y + ball.vy * arrowScale, '#ffd93d', 2);
     }
 
