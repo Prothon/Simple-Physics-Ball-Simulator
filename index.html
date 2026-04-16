@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Physics Sandbox — Grade 12 Remake</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -61,11 +62,35 @@
     font-size: 12px; line-height: 1.8; pointer-events: none;
   }
   #legend .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+  /* Drawer toggle button — hidden on desktop */
+  #drawer-toggle {
+    display: none; position: fixed; top: 10px; right: 10px; z-index: 20;
+    background: #7fdbca; color: #1a1a2e; border: none; border-radius: 50%;
+    width: 44px; height: 44px; font-size: 20px; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  /* Mobile: panel becomes a slide-in drawer */
+  @media (max-width: 700px) {
+    body { flex-direction: column; }
+    canvas { width: 100%; height: 100%; }
+    #panel {
+      position: fixed; top: 0; right: -300px; width: 280px; height: 100%;
+      z-index: 15; transition: right 0.3s ease; padding-top: 60px;
+    }
+    #panel.open { right: 0; }
+    #drawer-toggle { display: block; }
+    #legend { right: 16px; bottom: 16px; }
+    #tutorial { transform: translateX(-50%); left: 50%; }
+    .tip { display: none !important; } /* Tooltips don't work well on touch */
+  }
 </style>
 </head>
 <body>
 
 <canvas id="c"></canvas>
+<button id="drawer-toggle">⚙️</button>
 <div id="tutorial"></div>
 
 <div id="legend">
@@ -212,12 +237,13 @@
   <div class="group" style="font-size:12px; line-height:1.8; color:#ccc;">
     <b style="color:#7fdbca;">🕹️ How to Play</b><br>
     <kbd>Click + Drag</kbd> → Place & throw the ball<br>
-    <kbd>Right Click</kbd> → Drop a gravity well 🪐<br>
+    <kbd>Right Click</kbd> or <kbd>Two-finger tap</kbd> → Drop a gravity well 🪐<br>
     <kbd>X</kbd> → Clear all gravity wells<br>
     <kbd>R</kbd> → Reset everything<br>
     <kbd>F</kbd> → Toggle force arrows<br>
     <kbd>T</kbd> → Toggle trail<br>
-    <kbd>H</kbd> → Toggle formulas
+    <kbd>H</kbd> → Toggle formulas<br>
+    <span style="color:#556; font-size:11px;">📱 On mobile: drag to throw, two-finger tap for wells, ⚙️ for controls</span>
   </div>
 </div>
 
@@ -328,7 +354,8 @@ const readout = document.getElementById('readout');
 
 // Make the canvas fill the window (minus the side panel)
 function resize() {
-  canvas.width = window.innerWidth - 280;
+  const isMobile = window.innerWidth <= 700;
+  canvas.width = isMobile ? window.innerWidth : window.innerWidth - 280;
   canvas.height = window.innerHeight;
 }
 resize();
@@ -587,6 +614,83 @@ document.addEventListener('keydown', e => {
   } else if (key === 'h') {                    // H = toggle formula overlay
     window._hideFormulas = !window._hideFormulas;
   }
+});
+
+// ============================================================================
+// MOBILE: Drawer toggle + touch events
+// ============================================================================
+
+// Drawer toggle button
+document.getElementById('drawer-toggle').addEventListener('click', () => {
+  document.getElementById('panel').classList.toggle('open');
+});
+
+// Close drawer when tapping the canvas on mobile
+canvas.addEventListener('touchstart', () => {
+  document.getElementById('panel').classList.remove('open');
+}, { passive: true });
+
+// Prevent default touch behavior on canvas (no scrolling/zooming)
+canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+// TOUCH: One finger = place & throw (same as mouse)
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    // Two-finger tap = place gravity well at midpoint
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+    const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+    gravWells.push({ x: mx, y: my, mass: +sWellMass.value });
+    log.well(`PLACED #${gravWells.length}`);
+    return;
+  }
+  if (e.touches.length !== 1) return;
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  const mx = touch.clientX - rect.left, my = touch.clientY - rect.top;
+
+  if (phase === 'idle' || phase === 'launched') {
+    placePos = { x: mx, y: my };
+    aimPos = null;
+    ball.active = false;
+    trail = [];
+    bounceCount = 0;
+    phase = 'placed';
+    tutorialStep = 1;
+    showTutorial();
+  }
+});
+
+canvas.addEventListener('touchmove', e => {
+  if (phase !== 'placed' || e.touches.length !== 1) return;
+  const touch = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  aimPos = { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+});
+
+canvas.addEventListener('touchend', e => {
+  if (phase !== 'placed') return;
+  // Use last known aimPos for the launch
+  if (!aimPos) return;
+  const dx = placePos.x - aimPos.x;
+  const dy = placePos.y - aimPos.y;
+  const power = param('power') / 100 * 0.08;
+
+  ball.x = placePos.x;
+  ball.y = placePos.y;
+  ball.vx = dx * power;
+  ball.vy = dy * power;
+  ball.active = true;
+  trail = [];
+  bounceCount = 0;
+  phase = 'launched';
+  tutorialStep = 2;
+  showTutorial();
+  window._frame = 0;
+  window._idleFrames = 0;
+  log.launch();
 });
 
 // ============================================================================
