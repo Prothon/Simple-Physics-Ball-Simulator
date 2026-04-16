@@ -240,30 +240,37 @@
 const log = {
   enabled: true,
 
-  // Core log — everything goes through here
-  _out(style, ...args) {
+  // Snapshot the full simulation state — called automatically by every log method
+  _state() {
+    return {
+      ball: { x: +ball.x.toFixed(2), y: +ball.y.toFixed(2), vx: +ball.vx.toFixed(4), vy: +ball.vy.toFixed(4), active: ball.active },
+      speed: +Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy).toFixed(2),
+      params: {
+        grav: param('grav'), bounce: param('bounce'), fric: param('fric'),
+        wind: param('wind'), power: param('power'), timeScale: param('timeScale'), drag: param('drag')
+      },
+      bounds: { L: simLeft(), R: simRight(), T: simTop(), B: simBottom() },
+      wells: gravWells.map(w => ({ x: +w.x.toFixed(1), y: +w.y.toFixed(1), mass: w.mass })),
+      bounces: bounceCount,
+      frame: window._frame || 0,
+    };
+  },
+
+  // Core output — every log includes the auto-captured state
+  _out(icon, label, detail) {
     if (!this.enabled) return;
-    if (style) {
-      console.log(`%c${args[0]}`, style, ...args.slice(1));
-    } else {
-      console.log(...args);
-    }
+    const entry = { event: label, state: this._state() };
+    if (detail) entry.detail = detail;
+    console.log(`%c${icon} ${label}`, 'color: #7fdbca; font-weight: bold', entry);
   },
 
-  launch(...args)          { this._out('color: #7fdbca; font-weight: bold; font-size: 14px', '🚀 LAUNCH'); args.forEach(a => this._out(null, '  ' + a)); },
-  scenario(name, params)   { this._out('color: #ffd93d; font-weight: bold', `🌍 SCENARIO: ${name}`, params); },
-  well(action, detail)     { this._out('color: #c084fc; font-weight: bold', `🪐 ${action}`); if (detail) this._out(null, '  ' + detail); },
-  bounce(surface, info)    { this._out('color: #ff6b6b', `BOUNCE ${surface} | ${info}`); },
-  event(name, detail)      { this._out('color: #ffd93d; font-weight: bold', `${name}`); if (detail) this._out(null, '  ' + detail); },
-
-  // Frame log — multi-line state dump
-  frame(num, lines) {
-    this._out('color: #7fdbca; font-weight: bold', `━━━ FRAME ${num} ━━━`);
-    lines.forEach(l => this._out(null, '  ' + l));
-  },
-
-  // Physics detail — only called during frame log ticks
-  physics(label, detail) { this._out(null, `  ${label}: ${detail}`); },
+  launch(detail)            { this._out('🚀', 'LAUNCH', detail); },
+  scenario(name)            { this._out('🌍', `SCENARIO: ${name}`); },
+  well(action, detail)      { this._out('🪐', action, detail); },
+  bounce(surface, detail)   { this._out('💥', `BOUNCE ${surface}`, detail); },
+  event(name, detail)       { this._out('⏸', name, detail); },
+  frame(num, detail)        { this._out('━━', `FRAME ${num}`, detail); },
+  physics(label, detail)    { if (!this.enabled) return; console.log(`  ${label}: ${detail}`); },
 };
 
 // ============================================================================
@@ -387,7 +394,7 @@ const SCENARIOS = {
 function applyScenario(name) {
   const s = SCENARIOS[name];
   if (!s) return;
-  log.scenario(name, s);
+  log.scenario(name);
   for (const [key, value] of Object.entries(s)) {
     if (SLIDERS[key]) {
       SLIDERS[key].el.value = value;
@@ -476,11 +483,7 @@ canvas.addEventListener('mouseup', e => {
   showTutorial();
   window._frame = 0;
   window._idleFrames = 0;
-  log.launch(
-    `ball: { x: ${ball.x.toFixed(2)}, y: ${ball.y.toFixed(2)}, vx: ${ball.vx.toFixed(4)}, vy: ${ball.vy.toFixed(4)} }`,
-    `params: { grav: ${param('grav')}, bounce: ${param('bounce')}, fric: ${param('fric')}, wind: ${param('wind')}, power: ${param('power')}, timeScale: ${param('timeScale')}, drag: ${param('drag')} }`,
-    ...(gravWells.length > 0 ? [`wells: [${gravWells.map((w,i) => `\n    ${i}: { x: ${w.x.toFixed(1)}, y: ${w.y.toFixed(1)}, mass: ${w.mass} }`).join('')}\n  ]`] : [])
-  );
+  log.launch();
 });
 
 // RIGHT CLICK — Place a gravity well
@@ -492,8 +495,7 @@ canvas.addEventListener('contextmenu', e => {
     y: mouse.y,
     mass: +sWellMass.value
   });
-  const w = gravWells[gravWells.length - 1];
-  log.well(`WELL PLACED #${gravWells.length}`, `{ x: ${w.x.toFixed(1)}, y: ${w.y.toFixed(1)}, mass: ${w.mass} }`);
+  log.well(`PLACED #${gravWells.length}`);
 });
 
 // RESET BUTTON — Clear everything and start over
@@ -555,8 +557,7 @@ function step() {
     if (!window._idleFrames) window._idleFrames = 0;
     window._idleFrames++;
     if (window._idleFrames === 15) {
-      log.event('⏸ SIMULATION PAUSED — ball at rest. Click to relaunch.',
-        `Final state: pos=(${ball.x.toFixed(1)}, ${ball.y.toFixed(1)}) vel=(${ball.vx.toFixed(6)}, ${ball.vy.toFixed(6)})`);
+      log.event('SIMULATION PAUSED — ball at rest');
       ball.vx = 0;
       ball.vy = 0;
     }
@@ -572,17 +573,10 @@ function step() {
 
   // --- FULL STATE LOG (replayable) ---
   if (_log) {
-    const frameLines = [
-      `ball: { x: ${ball.x.toFixed(2)}, y: ${ball.y.toFixed(2)}, vx: ${ball.vx.toFixed(4)}, vy: ${ball.vy.toFixed(4)} }`,
-      `speed: ${speed.toFixed(2)} px/f | onFloor: ${onFloor}`,
-      `params: { grav: ${param('grav')}, bounce: ${param('bounce')}, fric: ${param('fric')}, wind: ${param('wind')}, power: ${param('power')}, timeScale: ${timeScale}, drag: ${param('drag')} }`,
-      `bounds: { L: ${simLeft()}, R: ${simRight()}, T: ${simTop()}, B: ${simBottom()} }`,
-      `computed: { gravity: ${gravity.toFixed(4)}, restitution: ${restitution.toFixed(2)}, friction: ${friction.toFixed(2)}, wind: ${wind.toFixed(4)} }`,
-    ];
-    if (gravWells.length > 0) {
-      frameLines.push(`wells: [${gravWells.map((w, i) => `\n    ${i}: { x: ${w.x.toFixed(1)}, y: ${w.y.toFixed(1)}, mass: ${w.mass} }`).join('')}\n  ]`);
-    }
-    log.frame(window._frame, frameLines);
+    log.frame(window._frame, {
+      onFloor,
+      computed: { gravity: +gravity.toFixed(4), restitution, friction, wind: +wind.toFixed(4) }
+    });
   }
 
   // --- APPLY FORCES ---
@@ -601,12 +595,12 @@ function step() {
 
     if (dist < 3) {
       // Ball has been captured by the gravity well!
-      if (_log) log.physics('WELL', `[${wi}]: CAPTURED (dist=${dist.toFixed(1)})`);
+      if (_log) log.physics('WELL', `[${wi}] CAPTURED (dist=${dist.toFixed(1)})`);
       ball.x = well.x;
       ball.y = well.y;
       ball.vx = 0;
       ball.vy = 0;
-      log.well(`CAPTURED by well #${wi}!`);
+      log.well(`CAPTURED by well #${wi}`);
       return;
     }
 
@@ -664,7 +658,7 @@ function step() {
     const impactVy = ball.vy;
     ball.y = simBottom() - RADIUS;
     if (impactVy > gravity + 0.5) {
-      log.bounce('floor', `impactVy=${impactVy.toFixed(2)} → vy=${(-impactVy * restitution).toFixed(2)}`);
+      log.bounce('floor', `impactVy=${impactVy.toFixed(2)}`);
       ball.vy = -impactVy * restitution;
       bounceFlashes.push({ x: ball.x, y: simBottom(), age: 0 });
       bounceCount++;
