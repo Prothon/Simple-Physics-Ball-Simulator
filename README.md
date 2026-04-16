@@ -10,7 +10,7 @@ Built as a teaching tool for my son Daniel (9 years old) to explore physics conc
 
 ## 🚀 How to Run
 
-**Online:** [Play it on GitHub Pages](https://YOUR_USERNAME.github.io/Grade12-Physics-Program-Remake/) *(replace with your actual URL after enabling Pages)*
+**Online:** [Play it on GitHub Pages](https://Prothon.github.io/Grade12-Physics-Program-Remake/) *(replace with your actual URL after enabling Pages)*
 
 **Locally:**
 ```
@@ -67,7 +67,7 @@ Right-click to place. Each well pulls the ball using Newton's inverse-square law
 
 | Slider | Range | Default | Formula | What it does |
 |--------|-------|---------|---------|-------------|
-| **Well Mass** | 50 – 10,000 | 1,000 | `F = G × mass / dist²` | Strength of placed wells. Higher mass = stronger pull. Force increases dramatically at close range |
+| **Well Mass** | 50 – 10,000 | 200 | `F = G × mass / dist²` | Strength of placed wells. Higher mass = stronger pull. Force increases dramatically at close range |
 
 **Gravity well behaviors:**
 - Wells are strong enough to overpower Earth gravity at high mass (~5000+)
