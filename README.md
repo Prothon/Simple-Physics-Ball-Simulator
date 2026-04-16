@@ -27,9 +27,19 @@ No server. No dependencies. No build step. No install. Works in any modern brows
 |--------|-------------|
 | **Left click + drag** | Place the ball, aim, and throw (slingshot style — pull back to shoot forward) |
 | **Right click** | Place a gravity well at cursor position |
-| **🔄 Reset** | Clear everything — ball, wells, trail — back to Zero-G defaults |
-| **🗑️ Clear All Wells** | Remove gravity wells without resetting the ball |
-| **Scenario buttons** | Instantly switch all physics parameters (active button shows pressed-in) |
+| **Space** | Pause / unpause the simulation |
+| **R** | Reset everything — ball, wells, trail — back to Zero-G defaults |
+| **X** | Clear all gravity wells |
+| **F** | Toggle force arrows |
+| **T** | Toggle trail |
+| **H** | Toggle formula overlay |
+| **G** | Toggle gravity well detail panel |
+| **🔄 Reset** | Same as R |
+| **🗑️ Clear All Wells** | Same as X |
+| 📱 **One finger drag** | Place & throw (mobile) |
+| 📱 **Two-finger tap** | Place gravity well (mobile) |
+| 📱 **Three-finger tap** | Pause/unpause (mobile) |
+| 📱 **⚙️ button** | Open/close control panel drawer (mobile) |
 
 ---
 
@@ -70,12 +80,16 @@ Right-click to place. Each well pulls the ball using Newton's inverse-square law
 | **Well Mass** | 50 – 10,000 | 200 | `F = G × mass / dist²` | Strength of placed wells. Higher mass = stronger pull. Force increases dramatically at close range |
 
 **Gravity well behaviors:**
+- Wells are solid objects — the ball bounces off their surface and can land on them
 - Wells are strong enough to overpower Earth gravity at high mass (~5000+)
 - Wells can pull a resting ball off the floor
-- Ball is "captured" if it reaches within 3px of a well center
+- Surface collision uses normal/tangent decomposition (same math as real engines)
+- Well surfaces have extra energy damping (30% restitution) so the ball settles
+- Soft interior gravity: force drops to zero at center (shell theorem)
 - Purple pull arrows always visible — length and thickness show relative force
 - Concentric rings scale with mass to show influence area
 - Multiple wells create chaotic multi-body trajectories
+- Press `G` for detailed per-well force breakdown
 
 ---
 
@@ -193,6 +207,8 @@ This simulator demonstrates these real physics concepts:
 | **Escape velocity** | Throw too fast past a well — ball escapes |
 | **Gravitational capture** | Throw too slow — ball spirals in |
 | **Slingshot effect** | Ball curves around well and exits faster |
+| **Landing on a planet** | Ball bounces on well surface, settles via damping |
+| **Shell theorem** | Inside a well, gravity decreases toward center |
 | **Three-body problem** | Multiple wells — chaotic, unpredictable trajectories |
 | **Terminal velocity** | High gravity + drag — speed plateaus |
 | **Resting contact** | Ball on floor — gravity balanced by normal force |
@@ -226,6 +242,8 @@ The original was a personal project built to study physics formulas. Abstract eq
 2. **Gravity well death spiral** — Ball orbited at 10px radius with force hitting the clamp ceiling every frame. Fixed with distance clamping and air drag.
 3. **Wall bounce spam** — Wind pushed ball into wall, wall bounced it back, wind pushed it again. Fixed with impact velocity threshold.
 4. **Corner trap** — Ball on floor against wall with wind, velocity oscillating near zero. Fixed with corner detection that zeroes velocity.
+5. **Well equilibrium bounce** — Ball bouncing on well surface at exactly 2.90 px/f forever. Gravity re-accelerated it to the same speed each bounce. Fixed with high resting threshold (5.0), 30% restitution on well surfaces, and soft interior gravity.
+6. **Stable orbit at clamp boundary** — Flat force clamp created a constant-force zone allowing perpetual orbits. Fixed with soft interior gravity (force drops linearly inside surface, like the shell theorem).
 
 These are all real problems that real physics engines solve. The resting contact problem is why engines like Box2D have "sleeping" systems.
 

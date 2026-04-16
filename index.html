@@ -860,7 +860,10 @@ function step() {
     // Gravity force with soft interior:
     // Outside surface: normal inverse-square F = GM/r²
     // Inside surface: force drops linearly to 0 at center (like inside a planet)
-    // This prevents stable orbits at the clamp boundary
+    // This prevents stable orbits at the clamp boundary — any orbit that
+    // dips inside the surface loses energy because the force weakens.
+    // Real physics: inside a uniform sphere, gravity is proportional to distance
+    // from center (shell theorem). Our linear falloff approximates this.
     const surfaceDist = wellRadius(well.mass) + ballRadius();
     let force;
     if (dist >= surfaceDist) {
@@ -912,31 +915,39 @@ function step() {
   }
 
   // --- WELL SURFACE COLLISIONS ---
-  // Each well is a solid sphere — the ball bounces off its surface
+  // Each gravity well is a solid sphere. The ball can land on its surface.
+  // This uses sphere-sphere collision with normal/tangent decomposition:
+  //   - Normal component (toward/away from well center) → bounce or rest
+  //   - Tangential component (sliding along surface) → friction
+  // Wells have extra energy loss (30% restitution) because gravity constantly
+  // re-accelerates the ball, which would otherwise create infinite bouncing.
   for (const well of gravWells) {
     const dx = ball.x - well.x;
     const dy = ball.y - well.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const wr = wellRadius(well.mass);
-    const minDist = wr + ballRadius();
+    const minDist = wr + ballRadius();  // Surface = well radius + ball radius
 
     if (dist < minDist && dist > 0) {
-      // Push ball out to the surface
-      const nx = dx / dist, ny = dy / dist; // Normal pointing away from well
+      // Step 1: Push ball out to the surface (resolve penetration)
+      const nx = dx / dist, ny = dy / dist; // Normal: points away from well center
       ball.x = well.x + nx * minDist;
       ball.y = well.y + ny * minDist;
 
-      // Velocity component along the normal (toward/away from well)
-      const vDotN = ball.vx * nx + ball.vy * ny;
+      // Step 2: Decompose velocity into normal and tangential components
+      const vDotN = ball.vx * nx + ball.vy * ny; // Negative = moving toward well
 
       if (vDotN < -5.0) {
-        // Real impact — bounce with extra energy loss on well surfaces
-        const wellRestitution = restitution * 0.3; // 30% of normal bounciness
+        // HARD IMPACT — bounce off the surface
+        // Well restitution is 30% of normal to prevent equilibrium bouncing
+        // (gravity re-accelerates the ball to the same speed each time,
+        //  so we need aggressive damping to break the cycle)
+        const wellRestitution = restitution * 0.3;
         ball.vx -= (1 + wellRestitution) * vDotN * nx;
         ball.vy -= (1 + wellRestitution) * vDotN * ny;
 
-        // Strong friction on tangential component to kill orbiting
-        const tx = -ny, ty = nx;
+        // Apply friction to tangential (sliding) component
+        const tx = -ny, ty = nx; // Tangent: perpendicular to normal
         const vDotT = ball.vx * tx + ball.vy * ty;
         ball.vx -= Math.min(friction + 0.15, 1) * vDotT * tx;
         ball.vy -= Math.min(friction + 0.15, 1) * vDotT * ty;
@@ -945,12 +956,13 @@ function step() {
         bounceCount++;
         log.bounce('well', `well=#${gravWells.indexOf(well)} impact=${vDotN.toFixed(2)}`);
       } else {
-        // Resting on surface — cancel inward velocity, apply surface friction
+        // RESTING CONTACT — ball is sitting on or gently touching the surface
+        // Cancel any inward velocity (don't let it sink through)
         if (vDotN < 0) {
           ball.vx -= vDotN * nx;
           ball.vy -= vDotN * ny;
         }
-        // Friction slows tangential (orbiting) movement — aggressive to settle quickly
+        // Friction kills tangential sliding/orbiting
         const tx = -ny, ty = nx;
         const vDotT = ball.vx * tx + ball.vy * ty;
         ball.vx -= Math.min(friction + 0.15, 1) * vDotT * tx;
