@@ -924,22 +924,31 @@ function step() {
       // Velocity component along the normal (toward/away from well)
       const vDotN = ball.vx * nx + ball.vy * ny;
 
-      if (vDotN < 0) {
-        // Ball is moving into the well surface — bounce it
+      if (vDotN < -1.0) {
+        // Real impact — bounce with energy loss
         ball.vx -= (1 + restitution) * vDotN * nx;
         ball.vy -= (1 + restitution) * vDotN * ny;
 
-        // Apply friction to the tangential component
-        const tx = -ny, ty = nx; // Tangent vector
+        // Friction on tangential component
+        const tx = -ny, ty = nx;
         const vDotT = ball.vx * tx + ball.vy * ty;
         ball.vx -= friction * vDotT * tx;
         ball.vy -= friction * vDotT * ty;
 
-        if (Math.abs(vDotN) > 1.0) {
-          bounceFlashes.push({ x: ball.x, y: ball.y, age: 0 });
-          bounceCount++;
-          log.bounce('well', `well=#${gravWells.indexOf(well)} impact=${vDotN.toFixed(2)}`);
+        bounceFlashes.push({ x: ball.x, y: ball.y, age: 0 });
+        bounceCount++;
+        log.bounce('well', `well=#${gravWells.indexOf(well)} impact=${vDotN.toFixed(2)}`);
+      } else {
+        // Resting on surface — cancel inward velocity, apply surface friction
+        if (vDotN < 0) {
+          ball.vx -= vDotN * nx;
+          ball.vy -= vDotN * ny;
         }
+        // Friction slows tangential (orbiting) movement
+        const tx = -ny, ty = nx;
+        const vDotT = ball.vx * tx + ball.vy * ty;
+        ball.vx -= friction * 0.3 * vDotT * tx;
+        ball.vy -= friction * 0.3 * vDotT * ty;
       }
     }
   }
