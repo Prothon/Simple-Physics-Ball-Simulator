@@ -78,16 +78,6 @@
 <div id="panel">
   <h2>⚽ Physics Sandbox</h2>
 
-  <div class="group" style="font-size:12px; line-height:1.8; color:#ccc;">
-    <b style="color:#7fdbca;">🕹️ How to Play</b><br>
-    <kbd>Click + Drag</kbd> → Place & throw the ball<br>
-    <kbd>Right Click</kbd> → Drop a gravity well 🪐<br>
-    <kbd>X</kbd> → Clear all gravity wells<br>
-    <kbd>R</kbd> → Reset everything<br>
-    <kbd>F</kbd> → Toggle force arrows<br>
-    <kbd>T</kbd> → Toggle trail
-  </div>
-
   <div class="group" style="display:flex; flex-wrap:wrap; gap:4px;">
     <button class="scene-btn" data-scene="earth">🌍 Earth</button>
     <button class="scene-btn" data-scene="moon">🌙 Moon</button>
@@ -208,6 +198,16 @@
     • Gravity 1.62 = the Moon!<br>
     • Gravity 24.79 = Jupiter!<br>
     • Gravity 0 + a well + throw sideways = orbit!
+  </div>
+
+  <div class="group" style="font-size:12px; line-height:1.8; color:#ccc;">
+    <b style="color:#7fdbca;">🕹️ How to Play</b><br>
+    <kbd>Click + Drag</kbd> → Place & throw the ball<br>
+    <kbd>Right Click</kbd> → Drop a gravity well 🪐<br>
+    <kbd>X</kbd> → Clear all gravity wells<br>
+    <kbd>R</kbd> → Reset everything<br>
+    <kbd>F</kbd> → Toggle force arrows<br>
+    <kbd>T</kbd> → Toggle trail
   </div>
 </div>
 
@@ -992,7 +992,7 @@ function drawGravityWells() {
     ctx.fillText(`m=${well.mass}`, well.x + coreRadius + 4, well.y - coreRadius - 2);
 
     // Purple arrow showing pull force on the ball — ALWAYS visible
-    if (ball.active) {
+    if (ball.active && cbForces.checked) {
       const dx = well.x - ball.x;
       const dy = well.y - ball.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
