@@ -79,6 +79,16 @@
     line-height: 1.5; white-space: pre; min-width: 390px;
   }
 
+  /* Gravity detail box — bottom-left, toggled with G */
+  #gravity-box {
+    position: absolute; bottom: 60px; left: 16px; z-index: 5;
+  }
+  #gravity-content {
+    background: rgba(15,15,35,0.9); border: 1px solid rgba(192,132,252,0.4);
+    border-radius: 6px; padding: 10px 12px; font: 12px monospace; color: #ccc;
+    line-height: 1.6; white-space: pre; min-width: 320px;
+  }
+
   /* Drawer toggle button — hidden on desktop */
   #drawer-toggle {
     display: none; position: fixed; top: 10px; right: 10px; z-index: 20;
@@ -111,6 +121,8 @@
       font-size: 11px;
     }
     #formula-content.open { max-height: 300px; padding: 10px 12px; }
+    #gravity-box { bottom: 16px; left: 8px; right: 8px; }
+    #gravity-content { min-width: 0; width: 100%; font-size: 11px; }
   }
 </style>
 </head>
@@ -124,6 +136,11 @@
 <div id="formula-box">
   <button id="formula-toggle">📐 ▼</button>
   <div id="formula-content"></div>
+</div>
+
+<!-- Gravity detail overlay — toggle with G key -->
+<div id="gravity-box" style="display:none;">
+  <div id="gravity-content"></div>
 </div>
 
 <div id="legend">
@@ -276,8 +293,9 @@
     <kbd>F</kbd> → Toggle force arrows<br>
     <kbd>T</kbd> → Toggle trail<br>
     <kbd>H</kbd> → Toggle formulas<br>
+    <kbd>G</kbd> → Toggle gravity well detail<br>
     <kbd>Space</kbd> → Pause / unpause<br>
-    <span style="color:#556; font-size:11px;">📱 On mobile: drag to throw, two-finger tap for wells, ⚙️ for controls</span>
+    <span style="color:#556; font-size:11px;">📱 On mobile: drag to throw, two-finger tap for wells, three-finger tap to pause, ⚙️ for controls</span>
   </div>
 </div>
 
@@ -652,6 +670,8 @@ document.addEventListener('keydown', e => {
   } else if (key === ' ') {                    // Space = pause/unpause
     e.preventDefault();
     window._paused = !window._paused;
+  } else if (key === 'g') {                    // G = toggle gravity detail
+    window._showGravDetail = !window._showGravDetail;
   }
 });
 
@@ -683,6 +703,12 @@ canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false }
 
 // TOUCH: One finger = place & throw (same as mouse)
 canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 3) {
+    // Three-finger tap = pause/unpause
+    e.preventDefault();
+    window._paused = !window._paused;
+    return;
+  }
   if (e.touches.length === 2) {
     // Two-finger tap = place gravity well at midpoint
     e.preventDefault();
@@ -1306,6 +1332,45 @@ function drawFormulaOverlay() {
   content.textContent = text;
 }
 
+function updateGravityDetail() {
+  const box = document.getElementById('gravity-box');
+  if (!ball.active || !window._showGravDetail) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = '';
+  const m = param('ballMass');
+  const ts = param('timeScale');
+  const g = param('grav');
+
+  let text = `🪐 GRAVITY DETAIL\n\n`;
+  text += `World gravity:  ${g} m/s² → ${(g * PPM * DT * ts).toFixed(4)} px/f\n`;
+  text += `Ball mass:      ${m.toFixed(1)} kg\n`;
+
+  if (gravWells.length === 0) {
+    text += `\nNo gravity wells placed.`;
+  } else {
+    text += `\n${'#'.padEnd(3)} ${'Dist'.padEnd(8)} ${'Clamp'.padEnd(8)} ${'Force'.padEnd(10)} ${'Fx'.padEnd(10)} Fy\n`;
+    text += `${'─'.repeat(52)}\n`;
+    let totalFx = 0, totalFy = 0;
+    for (let i = 0; i < gravWells.length; i++) {
+      const w = gravWells[i];
+      const dx = w.x - ball.x, dy = w.y - ball.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const cd = Math.max(dist, 40);
+      const force = (50 * w.mass) / (cd * cd) / m;
+      const fx = dist > 3 ? (dx / dist) * force * ts : 0;
+      const fy = dist > 3 ? (dy / dist) * force * ts : 0;
+      totalFx += fx; totalFy += fy;
+      text += `${String(i).padEnd(3)} ${dist.toFixed(0).padEnd(8)} ${cd.toFixed(0).padEnd(8)} ${force.toFixed(4).padEnd(10)} ${fx.toFixed(4).padEnd(10)} ${fy.toFixed(4)}\n`;
+    }
+    text += `${'─'.repeat(52)}\n`;
+    text += `${'Σ'.padEnd(3)} ${''.padEnd(8)} ${''.padEnd(8)} ${''.padEnd(10)} ${totalFx.toFixed(4).padEnd(10)} ${totalFy.toFixed(4)}`;
+  }
+
+  document.getElementById('gravity-content').textContent = text;
+}
+
 // ============================================================================
 // SECTION 12: READOUT — Update the side panel numbers
 // ============================================================================
@@ -1341,6 +1406,7 @@ function gameLoop() {
   step();          // 1. Update physics
   draw();          // 2. Draw everything
   updateReadout(); // 3. Update the numbers
+  updateGravityDetail(); // 4. Update gravity detail panel
 
   // Schedule the next frame
   requestAnimationFrame(gameLoop);
