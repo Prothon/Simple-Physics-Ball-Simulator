@@ -957,16 +957,33 @@ function step() {
         log.bounce('well', `well=#${gravWells.indexOf(well)} impact=${vDotN.toFixed(2)}`);
       } else {
         // RESTING CONTACT — ball is sitting on or gently touching the surface
-        // Cancel any inward velocity (don't let it sink through)
-        if (vDotN < 0) {
-          ball.vx -= vDotN * nx;
-          ball.vy -= vDotN * ny;
+        // Check if other wells are pulling the ball away from this surface
+        let pullAway = 0;
+        for (const other of gravWells) {
+          if (other === well) continue;
+          const odx = other.x - ball.x, ody = other.y - ball.y;
+          const odist = Math.sqrt(odx * odx + ody * ody);
+          if (odist < 1) continue;
+          const osd = wellRadius(other.mass) + ballRadius();
+          const oforce = odist >= osd ? (50 * other.mass) / (odist * odist) : (50 * other.mass) / (osd * osd) * (odist / osd);
+          // How much of this force pulls AWAY from the current well surface?
+          pullAway += ((odx / odist) * nx + (ody / odist) * ny) * oforce / mass;
         }
-        // Friction kills tangential sliding/orbiting
-        const tx = -ny, ty = nx;
-        const vDotT = ball.vx * tx + ball.vy * ty;
-        ball.vx -= Math.min(friction + 0.15, 1) * vDotT * tx;
-        ball.vy -= Math.min(friction + 0.15, 1) * vDotT * ty;
+
+        if (pullAway > 0.5) {
+          // Another well is pulling hard enough — let the ball lift off
+          // Don't cancel velocity, don't apply friction
+        } else {
+          // Actually resting — cancel inward velocity and apply friction
+          if (vDotN < 0) {
+            ball.vx -= vDotN * nx;
+            ball.vy -= vDotN * ny;
+          }
+          const tx = -ny, ty = nx;
+          const vDotT = ball.vx * tx + ball.vy * ty;
+          ball.vx -= Math.min(friction + 0.15, 1) * vDotT * tx;
+          ball.vy -= Math.min(friction + 0.15, 1) * vDotT * ty;
+        }
       }
     }
   }
