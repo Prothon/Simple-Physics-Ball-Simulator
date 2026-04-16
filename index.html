@@ -343,7 +343,7 @@
 // Every log entry automatically snapshots the full simulation state
 // (ball, params, bounds, wells, bounces, frame) so any entry can be
 // used to replay the exact scenario. No manual parameter passing needed.
-//
+const BASE_RADIUS = 14; // Ball radius at mass 1.0//
 // Usage:
 //   log.launch()                → Logs launch with full state
 //   log.scenario('earth')       → Logs scenario switch
@@ -421,7 +421,8 @@ window.visualViewport?.addEventListener('resize', resize);
 
 const PPM = 15;       // Pixels Per Meter — how big 1 meter is on screen
 const DT = 1 / 60;    // Delta Time — time between frames (1/60th of a second)
-const BASE_RADIUS = 14; // Ball radius at mass 1.0
+// Well surface radius — shared between physics and drawing
+function wellRadius(mass) { return 6 + (mass / 2000) * 10; }
 // Ball radius scales with mass: sqrt so it grows visually but not absurdly
 function ballRadius() { return BASE_RADIUS * Math.sqrt(param('ballMass')); }
 const MARGIN = { top: 10, right: 10, bottom: 30, left: 30 }; // Space for axis labels
@@ -856,9 +857,8 @@ function step() {
       return;
     }
 
-    // Clamp minimum distance so force can't spike to insane values
-    // At 40px min, max force with mass 2000 = 5*2000/1600 = 6.25 per frame
-    const clampedDist = Math.max(dist, 40);
+    // Clamp minimum distance to well surface so force doesn't spike inside
+    const clampedDist = Math.max(dist, wellRadius(well.mass) + ballRadius());
     const clampedDistSq = clampedDist * clampedDist;
 
     // Newton's gravity: F = G × M / r²
@@ -906,7 +906,45 @@ function step() {
     }
   }
 
-  // --- COLLISIONS ---
+  // --- WELL SURFACE COLLISIONS ---
+  // Each well is a solid sphere — the ball bounces off its surface
+  for (const well of gravWells) {
+    const dx = ball.x - well.x;
+    const dy = ball.y - well.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const wr = wellRadius(well.mass);
+    const minDist = wr + ballRadius();
+
+    if (dist < minDist && dist > 0) {
+      // Push ball out to the surface
+      const nx = dx / dist, ny = dy / dist; // Normal pointing away from well
+      ball.x = well.x + nx * minDist;
+      ball.y = well.y + ny * minDist;
+
+      // Velocity component along the normal (toward/away from well)
+      const vDotN = ball.vx * nx + ball.vy * ny;
+
+      if (vDotN < 0) {
+        // Ball is moving into the well surface — bounce it
+        ball.vx -= (1 + restitution) * vDotN * nx;
+        ball.vy -= (1 + restitution) * vDotN * ny;
+
+        // Apply friction to the tangential component
+        const tx = -ny, ty = nx; // Tangent vector
+        const vDotT = ball.vx * tx + ball.vy * ty;
+        ball.vx -= friction * vDotT * tx;
+        ball.vy -= friction * vDotT * ty;
+
+        if (Math.abs(vDotN) > 1.0) {
+          bounceFlashes.push({ x: ball.x, y: ball.y, age: 0 });
+          bounceCount++;
+          log.bounce('well', `well=#${gravWells.indexOf(well)} impact=${vDotN.toFixed(2)}`);
+        }
+      }
+    }
+  }
+
+  // --- WALL COLLISIONS ---
   if (ball.y + ballRadius() > simBottom()) {
     const impactVy = ball.vy;
     ball.y = simBottom() - ballRadius();
@@ -1179,7 +1217,7 @@ function drawGravityWells() {
     drawCircle(well.x, well.y, haloR, grad);
 
     // Solid core — size scales with mass
-    const coreRadius = 6 + (well.mass / 2000) * 10;
+    const coreRadius = wellRadius(well.mass);
     drawCircle(well.x, well.y, coreRadius, '#c084fc');
     drawCircle(well.x, well.y, coreRadius * 0.4, '#e0d0ff');  // Bright center
 
