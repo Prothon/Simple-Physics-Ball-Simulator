@@ -343,7 +343,10 @@
 // Every log entry automatically snapshots the full simulation state
 // (ball, params, bounds, wells, bounces, frame) so any entry can be
 // used to replay the exact scenario. No manual parameter passing needed.
-const BASE_RADIUS = 14; // Ball radius at mass 1.0//
+const BASE_RADIUS = 14; // Ball radius at mass 1.0
+// Gravitational constant — scales with canvas diagonal so wells feel
+// the same strength on a phone (375px) as on a desktop (1700px)
+function G() { return 50 * (Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height) / 2000); }//
 // Usage:
 //   log.launch()                → Logs launch with full state
 //   log.scenario('earth')       → Logs scenario switch
@@ -907,9 +910,9 @@ function step() {
     const surfaceDist = wellRadius(well.mass) + ballRadius();
     let force;
     if (dist >= surfaceDist) {
-      force = (50 * well.mass) / (dist * dist);
+      force = (G() * well.mass) / (dist * dist);
     } else {
-      const surfaceForce = (50 * well.mass) / (surfaceDist * surfaceDist);
+      const surfaceForce = (G() * well.mass) / (surfaceDist * surfaceDist);
       force = surfaceForce * (dist / surfaceDist);
     }
     // Apply force divided by ball mass (F=ma → a=F/m)
@@ -1005,7 +1008,7 @@ function step() {
           const odist = Math.sqrt(odx * odx + ody * ody);
           if (odist < 1) continue;
           const osd = wellRadius(other.mass) + ballRadius();
-          const oforce = odist >= osd ? (50 * other.mass) / (odist * odist) : (50 * other.mass) / (osd * osd) * (odist / osd);
+          const oforce = odist >= osd ? (G() * other.mass) / (odist * odist) : (G() * other.mass) / (osd * osd) * (odist / osd);
           // How much of this force pulls AWAY from the current well surface?
           pullAway += ((odx / odist) * nx + (ody / odist) * ny) * oforce / mass;
         }
@@ -1332,7 +1335,7 @@ function drawGravityWells() {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > 3) {
         const sd = wellRadius(well.mass) + ballRadius();
-        const force = dist >= sd ? (50 * well.mass) / (dist * dist) : (50 * well.mass) / (sd * sd) * (dist / sd);
+        const force = dist >= sd ? (G() * well.mass) / (dist * dist) : (G() * well.mass) / (sd * sd) * (dist / sd);
         // Large visual scale so arrows are visible even from far away
         // Min length of 20px so you can always see which direction the pull is
         const arrowLen = Math.max(Math.min(force * 500, 150, dist - 10), 20);
@@ -1460,7 +1463,7 @@ function drawFormulaOverlay() {
     for (let i = 0; i < gravWells.length; i++) {
       const dx = gravWells[i].x - ball.x, dy = gravWells[i].y - ball.y;
       const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 40);
-      const f = (50 * gravWells[i].mass) / (dist * dist) / m;
+      const f = (G() * gravWells[i].mass) / (dist * dist) / m;
       if (f > maxForce) { maxForce = f; maxIdx = i; }
     }
     text += `\n\nWells (${gravWells.length}):  strongest=#${maxIdx} F=${maxForce.toFixed(2)}`;
@@ -1495,7 +1498,7 @@ function updateGravityDetail() {
       const dx = w.x - ball.x, dy = w.y - ball.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const sd = wellRadius(w.mass) + ballRadius();
-      const force = (dist >= sd ? (50 * w.mass) / (dist * dist) : (50 * w.mass) / (sd * sd) * (dist / sd)) / m;
+      const force = (dist >= sd ? (G() * w.mass) / (dist * dist) : (G() * w.mass) / (sd * sd) * (dist / sd)) / m;
       const fx = dist > 3 ? (dx / dist) * force * ts : 0;
       const fy = dist > 3 ? (dy / dist) * force * ts : 0;
       totalFx += fx; totalFy += fy;
