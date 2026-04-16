@@ -276,6 +276,7 @@
     <kbd>F</kbd> → Toggle force arrows<br>
     <kbd>T</kbd> → Toggle trail<br>
     <kbd>H</kbd> → Toggle formulas<br>
+    <kbd>Space</kbd> → Pause / unpause<br>
     <span style="color:#556; font-size:11px;">📱 On mobile: drag to throw, two-finger tap for wells, ⚙️ for controls</span>
   </div>
 </div>
@@ -648,6 +649,9 @@ document.addEventListener('keydown', e => {
     cbTrail.checked = !cbTrail.checked;
   } else if (key === 'h') {                    // H = toggle formula overlay
     window._hideFormulas = !window._hideFormulas;
+  } else if (key === ' ') {                    // Space = pause/unpause
+    e.preventDefault();
+    window._paused = !window._paused;
   }
 });
 
@@ -753,7 +757,7 @@ canvas.addEventListener('touchend', e => {
 // ============================================================================
 
 function step() {
-  if (!ball.active) return;
+  if (!ball.active || window._paused) return;
 
   // Read current slider values
   const timeScale   = param('timeScale');
@@ -1288,15 +1292,15 @@ function drawFormulaOverlay() {
     `Ball mass:  ${m.toFixed(1)} kg`;
 
   if (gravWells.length > 0) {
-    text += `\n\nWells (${gravWells.length}):  F = G×M/dist²/mass`;
+    // Just show count and strongest pull — not every well
+    let maxForce = 0, maxIdx = 0;
     for (let i = 0; i < gravWells.length; i++) {
-      const well = gravWells[i];
-      const dx = well.x - ball.x, dy = well.y - ball.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const clampedDist = Math.max(dist, 40);
-      const force = (50 * well.mass) / (clampedDist * clampedDist) / m;
-      text += `\n  #${i}: dist=${dist.toFixed(0)}px  F=${force.toFixed(2)}`;
+      const dx = gravWells[i].x - ball.x, dy = gravWells[i].y - ball.y;
+      const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 40);
+      const f = (50 * gravWells[i].mass) / (dist * dist) / m;
+      if (f > maxForce) { maxForce = f; maxIdx = i; }
     }
+    text += `\n\nWells (${gravWells.length}):  strongest=#${maxIdx} F=${maxForce.toFixed(2)}`;
   }
 
   content.textContent = text;
