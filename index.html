@@ -574,7 +574,7 @@ function step() {
 
     // Newton's gravity: F = G × M / r²
     // G=5 tuned so mass 500 at 200px = gentle pull, mass 2000 at 80px = strong orbit
-    const force = (10 * well.mass) / clampedDistSq;
+    const force = (50 * well.mass) / clampedDistSq;
     const fx = (dx / dist) * force * timeScale;
     const fy = (dy / dist) * force * timeScale;
 
@@ -602,10 +602,12 @@ function step() {
   }
 
   // --- MOVE ---
+  // If wells pulled the ball upward while resting, let it lift off
+  const liftedOff = onFloor && ball.vy < -0.1;
   ball.x += ball.vx;
-  if (!onFloor) ball.y += ball.vy;
+  if (!onFloor || liftedOff) ball.y += ball.vy;
 
-  if (onFloor) {
+  if (onFloor && !liftedOff) {
     ball.vx *= (1 - friction);
     if (Math.abs(ball.vx) < 0.01) ball.vx = 0;
   }
@@ -889,7 +891,7 @@ function drawGravityWells() {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > 3) {
         const clampedDist = Math.max(dist, 40);
-        const force = (10 * well.mass) / (clampedDist * clampedDist);
+        const force = (50 * well.mass) / (clampedDist * clampedDist);
         // Large visual scale so arrows are visible even from far away
         // Min length of 20px so you can always see which direction the pull is
         const arrowLen = Math.max(Math.min(force * 500, 150, dist - 10), 20);
