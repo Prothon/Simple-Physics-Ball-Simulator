@@ -873,7 +873,7 @@ function step() {
     const fx = (dx / dist) * force * timeScale / mass;
     const fy = (dy / dist) * force * timeScale / mass;
 
-    if (_log) log.physics('WELL', `[${wi}]: dist=${dist.toFixed(1)} clamp=${clampedDist.toFixed(0)} force=${force.toFixed(4)} → Δvx=${fx.toFixed(4)} Δvy=${fy.toFixed(4)}`);
+    if (_log) log.physics('WELL', `[${wi}]: dist=${dist.toFixed(1)} surface=${surfaceDist.toFixed(0)} force=${force.toFixed(4)} → Δvx=${fx.toFixed(4)} Δvy=${fy.toFixed(4)}`);
 
     ball.vx += fx;
     ball.vy += fy;
