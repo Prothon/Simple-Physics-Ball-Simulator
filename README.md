@@ -26,8 +26,8 @@ No server. No dependencies. No build step. No install. Works in any modern brows
 | Action | What it does |
 |--------|-------------|
 | **Left click + drag** | Place the ball, aim, and throw (slingshot style — pull back to shoot forward) |
-| **Right click** | Place a gravity well at cursor position |
-| **Space** | Pause / unpause the simulation |
+| **Right click** | Place a gravity well — hold and drag to reposition |
+| **Space** | Pause / unpause the simulation (greyed overlay) |
 | **R** | Reset everything — ball, wells, trail — back to Zero-G defaults |
 | **X** | Clear all gravity wells |
 | **F** | Toggle force arrows |
@@ -37,7 +37,7 @@ No server. No dependencies. No build step. No install. Works in any modern brows
 | **🔄 Reset** | Same as R |
 | **🗑️ Clear All Wells** | Same as X |
 | 📱 **One finger drag** | Place & throw (mobile) |
-| 📱 **Two-finger tap** | Place gravity well (mobile) |
+| 📱 **Two-finger tap** | Place gravity well — hold and drag to move it (mobile) |
 | 📱 **Three-finger tap** | Pause/unpause (mobile) |
 | 📱 **⚙️ button** | Open/close control panel drawer (mobile) |
 
@@ -55,6 +55,7 @@ Forces that act on the ball from the environment.
 | **Gravity** | 0 – 30 m/s² | 0 (Zero-G) | `Vy += g × Δt` | Downward acceleration. Earth = 9.81, Moon = 1.62, Jupiter = 24.79 |
 | **Wind** | -5 – 5 m/s² | 0 | `Vx += wind × Δt` | Horizontal acceleration. Negative = left, positive = right |
 | **Air Drag** | 0% – 1% | 0.10% | `V *= (1 − drag × speed)` | Speed-dependent resistance. Creates terminal velocity. 0% = vacuum, ~0.2% = Earth air |
+| **Ball Mass** | 0.1 – 10 kg | 1.0 | `a = F / mass` | Heavier = harder to push with wind/wells. Gravity unaffected (Galileo!). Ball size scales visually |
 
 ### 🧱 Surface Properties
 What happens when the ball touches walls or the floor.
@@ -81,6 +82,7 @@ Right-click to place. Each well pulls the ball using Newton's inverse-square law
 
 **Gravity well behaviors:**
 - Wells are solid objects — the ball bounces off their surface and can land on them
+- Draggable — right-click hold (or two-finger hold on mobile) to reposition wells live
 - Wells are strong enough to overpower Earth gravity at high mass (~5000+)
 - Wells can pull a resting ball off the floor
 - Surface collision uses normal/tangent decomposition (same math as real engines)
@@ -213,6 +215,7 @@ This simulator demonstrates these real physics concepts:
 | **Terminal velocity** | High gravity + drag — speed plateaus |
 | **Resting contact** | Ball on floor — gravity balanced by normal force |
 | **Conservation of energy** | Bounciness 1.0 + no drag = ball bounces forever |
+| **Inertia** | Heavy ball (mass 10) resists wind/wells more than light ball (mass 0.1) |
 
 ---
 
