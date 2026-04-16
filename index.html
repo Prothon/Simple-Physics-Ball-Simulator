@@ -343,6 +343,7 @@ const SCENARIOS = {
 function applyScenario(name) {
   const s = SCENARIOS[name];
   if (!s) return;
+  console.log(`%c🌍 SCENARIO: ${name}`, 'color: #ffd93d; font-weight: bold', s);
   for (const [key, value] of Object.entries(s)) {
     if (SLIDERS[key]) {
       SLIDERS[key].el.value = value;
