@@ -22,6 +22,7 @@
   .readout { font-size: 12px; color: #888; line-height: 1.7; }
   .readout b { color: #ccc; }
   button.scene-btn { font-size: 11px; padding: 5px 8px; flex: 1 1 auto; min-width: 70px; }
+  button.scene-btn.active { background: #1a1a2e; color: #7fdbca; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); border: 1px solid #7fdbca66; }
   button {
     background: #7fdbca; color: #1a1a2e; border: none; border-radius: 4px;
     padding: 8px; font-weight: 600; cursor: pointer; font-size: 13px;
@@ -86,7 +87,8 @@
   </div>
 
   <div class="group">
-    <label>Gravity <span class="val" id="vGrav">9.81</span>
+    <b style="color:#7fdbca; font-size:12px; margin-bottom:6px; display:block;">🌍 World Forces</b>
+    <label>Gravity <span class="val" id="vGrav">0.00</span>
       <div class="tip">
         Gravity is the force that pulls everything toward the ground. The bigger the number, the harder things fall.<br>
         <div class="formula">Vy = Vy + (gravity × time)</div>
@@ -94,27 +96,7 @@
         On the Moon, you could jump 6× higher because gravity is 6× weaker!
       </div>
     </label>
-    <input type="range" id="sGrav" min="0" max="30" step="0.01" value="9.81">
-
-    <label>Bounciness <span class="val" id="vBounce">0.40</span>
-      <div class="tip">
-        This is called the "coefficient of restitution." It controls how much energy the ball keeps when it bounces. At 0, the ball goes SPLAT. At 1, it bounces back to the exact same height forever.<br>
-        <div class="formula">Vy = −Vy × bounciness</div>
-        <div class="example">🏀 Basketball ≈ 0.75 · ⚾ Baseball ≈ 0.55 · 🧱 Brick = 0</div>
-        The minus sign (−) is what makes the ball go UP after hitting the floor!
-      </div>
-    </label>
-    <input type="range" id="sBounce" min="0" max="100" step="1" value="40">
-
-    <label>Friction <span class="val" id="vFric">0.25</span>
-      <div class="tip">
-        Friction is what slows things down when they slide across a surface. Ice has very low friction (things slide forever). Sandpaper has very high friction (things stop fast).<br>
-        <div class="formula">Vx = Vx × (1 − friction)</div>
-        <div class="example">🧊 Ice ≈ 0.01 · 🏀 Gym floor ≈ 0.25 · 🏖️ Sand ≈ 0.60</div>
-        Without friction, a ball rolling on the ground would never stop!
-      </div>
-    </label>
-    <input type="range" id="sFric" min="0" max="100" step="1" value="25">
+    <input type="range" id="sGrav" min="0" max="30" step="0.01" value="0">
 
     <label>Wind <span class="val" id="vWind">0.0</span>
       <div class="tip">
@@ -125,25 +107,7 @@
     </label>
     <input type="range" id="sWind" min="-5" max="5" step="0.1" value="0">
 
-    <label>Throw Power <span class="val" id="vPower">50%</span>
-      <div class="tip">
-        Controls how hard you throw the ball. Higher = faster launch. The direction comes from which way you drag your mouse (like a slingshot — pull back to shoot forward).<br>
-        <div class="formula">velocity = drag distance × power</div>
-        <div class="example">Try a gentle toss (10%) vs a cannon shot (100%)!</div>
-      </div>
-    </label>
-    <input type="range" id="sPower" min="5" max="100" step="1" value="50">
-
-    <label>⏱️ Time Scale <span class="val" id="vTimeScale">1.0x</span>
-      <div class="tip">
-        Slows down or speeds up time itself! At 0.25x everything moves in slow motion so you can watch the physics happen step by step. At 2x it's fast-forward.<br>
-        <div class="formula">All forces × time scale</div>
-        <div class="example">Try slow-mo (0.25x) to watch a bounce happen frame by frame!</div>
-      </div>
-    </label>
-    <input type="range" id="sTimeScale" min="0.1" max="2" step="0.05" value="1">
-
-    <label>🌫️ Air Drag <span class="val" id="vDrag">0.20%</span>
+    <label>🌫️ Air Drag <span class="val" id="vDrag">0.00%</span>
       <div class="tip">
         Air resistance! The faster the ball moves, the more the air slows it down. This is why skydivers reach a "terminal velocity" — they stop speeding up because drag equals gravity.<br>
         <div class="formula">V = V × (1 − drag × speed)</div>
@@ -151,7 +115,51 @@
         This is why a feather falls slowly but a bowling ball doesn't — the feather has more drag relative to its weight!
       </div>
     </label>
-    <input type="range" id="sDrag" min="0" max="1" step="0.01" value="0.2">
+    <input type="range" id="sDrag" min="0" max="1" step="0.01" value="0">
+  </div>
+
+  <div class="group">
+    <b style="color:#7fdbca; font-size:12px; margin-bottom:6px; display:block;">🧱 Surface Properties</b>
+    <label>Bounciness <span class="val" id="vBounce">0.95</span>
+      <div class="tip">
+        This is called the "coefficient of restitution." It controls how much energy the ball keeps when it bounces. At 0, the ball goes SPLAT. At 1, it bounces back to the exact same height forever.<br>
+        <div class="formula">Vy = −Vy × bounciness</div>
+        <div class="example">🏀 Basketball ≈ 0.75 · ⚾ Baseball ≈ 0.55 · 🧱 Brick = 0</div>
+        The minus sign (−) is what makes the ball go UP after hitting the floor!
+      </div>
+    </label>
+    <input type="range" id="sBounce" min="0" max="100" step="1" value="95">
+
+    <label>Friction <span class="val" id="vFric">0.00</span>
+      <div class="tip">
+        Friction is what slows things down when they slide across a surface. Ice has very low friction (things slide forever). Sandpaper has very high friction (things stop fast).<br>
+        <div class="formula">Vx = Vx × (1 − friction)</div>
+        <div class="example">🧊 Ice ≈ 0.01 · 🏀 Gym floor ≈ 0.25 · 🏖️ Sand ≈ 0.60</div>
+        Without friction, a ball rolling on the ground would never stop!
+      </div>
+    </label>
+    <input type="range" id="sFric" min="0" max="100" step="1" value="0">
+  </div>
+
+  <div class="group">
+    <b style="color:#7fdbca; font-size:12px; margin-bottom:6px; display:block;">🎮 Controls</b>
+    <label>Throw Power <span class="val" id="vPower">30%</span>
+      <div class="tip">
+        Controls how hard you throw the ball. Higher = faster launch. The direction comes from which way you drag your mouse (like a slingshot — pull back to shoot forward).<br>
+        <div class="formula">velocity = drag distance × power</div>
+        <div class="example">Try a gentle toss (10%) vs a cannon shot (100%)!</div>
+      </div>
+    </label>
+    <input type="range" id="sPower" min="5" max="100" step="1" value="30">
+
+    <label>⏱️ Time Scale <span class="val" id="vTimeScale">0.25x</span>
+      <div class="tip">
+        Slows down or speeds up time itself! At 0.25x everything moves in slow motion so you can watch the physics happen step by step. At 2x it's fast-forward.<br>
+        <div class="formula">All forces × time scale</div>
+        <div class="example">Try slow-mo (0.25x) to watch a bounce happen frame by frame!</div>
+      </div>
+    </label>
+    <input type="range" id="sTimeScale" min="0.1" max="2" step="0.05" value="0.25">
   </div>
 
   <div class="group">
@@ -320,28 +328,29 @@ let aimPos = null;       // Where the mouse is during aiming {x, y}
 // ============================================================================
 
 const SCENARIOS = {
-  earth:     { grav: 9.81,  bounce: 40, fric: 25, wind: 0,   power: 50, timeScale: 1, drag: 0.2 },
-  moon:      { grav: 1.62,  bounce: 50, fric: 10, wind: 0,   power: 50, timeScale: 1, drag: 0 },
-  mars:      { grav: 3.72,  bounce: 45, fric: 20, wind: 0,   power: 50, timeScale: 1, drag: 0.05 },
-  jupiter:   { grav: 24.79, bounce: 30, fric: 30, wind: 0,   power: 50, timeScale: 1, drag: 0.5 },
-  space:     { grav: 0,     bounce: 95, fric: 0,  wind: 0,   power: 30, timeScale: 1, drag: 0 },
-  superball: { grav: 9.81,  bounce: 95, fric: 5,  wind: 0,   power: 70, timeScale: 1, drag: 0.1 },
-  windstorm: { grav: 9.81,  bounce: 40, fric: 25, wind: 4.5, power: 50, timeScale: 1, drag: 0.3 },
-  ice:       { grav: 9.81,  bounce: 40, fric: 1,  wind: 0,   power: 50, timeScale: 1, drag: 0.05 },
-  mud:       { grav: 9.81,  bounce: 5,  fric: 90, wind: 0,   power: 50, timeScale: 1, drag: 0.8 },
+  earth:     { grav: 9.81,  bounce: 40, fric: 25, wind: 0,   power: 50, timeScale: 0.25, drag: 0.2 },
+  moon:      { grav: 1.62,  bounce: 50, fric: 10, wind: 0,   power: 50, timeScale: 0.25, drag: 0 },
+  mars:      { grav: 3.72,  bounce: 45, fric: 20, wind: 0,   power: 50, timeScale: 0.25, drag: 0.05 },
+  jupiter:   { grav: 24.79, bounce: 30, fric: 30, wind: 0,   power: 50, timeScale: 0.25, drag: 0.5 },
+  space:     { grav: 0,     bounce: 95, fric: 0,  wind: 0,   power: 30, timeScale: 0.25, drag: 0 },
+  superball: { grav: 9.81,  bounce: 95, fric: 5,  wind: 0,   power: 70, timeScale: 0.25, drag: 0.1 },
+  windstorm: { grav: 9.81,  bounce: 40, fric: 25, wind: 4.5, power: 50, timeScale: 0.25, drag: 0.3 },
+  ice:       { grav: 9.81,  bounce: 40, fric: 1,  wind: 0,   power: 50, timeScale: 0.25, drag: 0.05 },
+  mud:       { grav: 9.81,  bounce: 5,  fric: 90, wind: 0,   power: 50, timeScale: 0.25, drag: 0.8 },
 };
 
 // Set all sliders to match a scenario
 function applyScenario(name) {
   const s = SCENARIOS[name];
   if (!s) return;
-  // Loop through each property and set the matching slider
   for (const [key, value] of Object.entries(s)) {
     if (SLIDERS[key]) {
       SLIDERS[key].el.value = value;
       SLIDERS[key].out.textContent = SLIDERS[key].fmt(value);
     }
   }
+  // Update active button state
+  document.querySelectorAll('.scene-btn').forEach(b => b.classList.toggle('active', b.dataset.scene === name));
 }
 
 // ============================================================================
@@ -454,7 +463,7 @@ document.getElementById('btnReset').addEventListener('click', () => {
   phase = 'idle';
   tutorialStep = 0;
   showTutorial();
-  applyScenario('earth');
+  applyScenario('space');
 });
 
 // CLEAR WELLS BUTTON — Remove gravity wells but keep the ball going
@@ -466,6 +475,8 @@ document.getElementById('btnClearWells').addEventListener('click', () => {
 for (const btn of document.querySelectorAll('.scene-btn')) {
   btn.addEventListener('click', () => applyScenario(btn.dataset.scene));
 }
+// Set initial active state
+document.querySelector('.scene-btn[data-scene="space"]').classList.add('active');
 
 // ============================================================================
 // SECTION 8: PHYSICS — The step() function runs every frame (60 times/second)
@@ -881,7 +892,7 @@ function drawGravityWells() {
         const force = (5 * well.mass) / (clampedDist * clampedDist);
         // Large visual scale so arrows are visible even from far away
         // Min length of 20px so you can always see which direction the pull is
-        const arrowLen = Math.max(Math.min(force * 500, 150), 20);
+        const arrowLen = Math.max(Math.min(force * 500, 150, dist - 10), 20);
         const fx = (dx / dist) * arrowLen;
         const fy = (dy / dist) * arrowLen;
         const thickness = Math.min(1 + force * 3, 5);
