@@ -211,30 +211,48 @@
 //     3. READOUT — update the numbers on the side panel
 //
 // HOW TO MODIFY:
-//   Want to change how the ball behaves? Look at the step() function.
-//   Want to change how things look? Look at the draw() function.
-//   Want to add a new slider? Copy one of the entries in SLIDERS below.
+//   Want to change how the ball behaves? Look at the step() function (SECTION 8).
+//   Want to change how things look? Look at the draw() function (SECTION 10).
+//   Want to add a new slider? See SECTION 3 — it's 3 steps.
+//   Want to add a new scenario? See SECTION 5 — it's 2 steps.
+//   Want to add a new force? Add it in step() after "APPLY FORCES" comment.
 //
 // KEY CONCEPTS:
-//   - Velocity = how fast something is moving (pixels per frame)
-//   - Acceleration = how much velocity changes each frame (gravity, wind)
-//   - Restitution = how much energy is kept after a bounce (0 to 1)
-//   - Friction = how much the ground slows horizontal movement
+//   - Velocity     = how fast something moves (pixels per frame)
+//   - Acceleration  = how much velocity changes each frame (gravity, wind)
+//   - Restitution   = how much energy is kept after a bounce (0 to 1)
+//   - Friction      = how much the ground slows horizontal movement
+//   - Drag          = air resistance, increases with speed (terminal velocity)
+//   - Inverse-square law = gravity wells pull harder when closer (F = GM/r²)
+//
+// DEBUGGING:
+//   Open browser console (F12) to see structured state logs.
+//   Type log.enabled = false to silence. log.enabled = true to restore.
+//   Every log entry includes a full state snapshot for replay.
+//
+// HOSTING:
+//   This is a single HTML file with zero dependencies.
+//   Double-click to run locally, or host on GitHub Pages.
 // ============================================================================
 
 // ============================================================================
-// LOGGER — Centralized logging so we can control output in one place
+// LOGGER — Centralized logging with automatic state capture
+//
+// Every log entry automatically snapshots the full simulation state
+// (ball, params, bounds, wells, bounces, frame) so any entry can be
+// used to replay the exact scenario. No manual parameter passing needed.
 //
 // Usage:
-//   log.launch('ball state...')     → 🚀 styled green
-//   log.scenario('earth', {...})    → 🌍 styled yellow
-//   log.well('placed', {...})       → 🪐 styled purple
-//   log.bounce('floor', 25.6)      → red
-//   log.frame(60, {...})            → ━━━ styled teal (once per second)
-//   log.physics('DRAG', '...')      → plain (only on frame log ticks)
-//   log.event('PAUSED', '...')      → ⏸ styled yellow
+//   log.launch()                → Logs launch with full state
+//   log.scenario('earth')       → Logs scenario switch
+//   log.well('PLACED #1')       → Logs well placement
+//   log.bounce('floor', '...')  → Logs collision detail
+//   log.frame(60, {...})        → Periodic state dump (once/sec)
+//   log.physics('DRAG', '...')  → Per-frame detail (only on log ticks)
+//   log.event('PAUSED')         → Simulation events
 //
-// To silence all logging: set log.enabled = false in the console.
+// To silence:  log.enabled = false  (in browser console)
+// To restore:  log.enabled = true
 // ============================================================================
 
 const log = {
@@ -527,11 +545,16 @@ document.querySelector('.scene-btn[data-scene="space"]').classList.add('active')
 // SECTION 8: PHYSICS — The step() function runs every frame (60 times/second)
 //
 // This is the HEART of the simulation. Every frame we:
-//   1. Apply gravity (accelerates the ball downward)
-//   2. Apply wind (accelerates the ball sideways)
-//   3. Apply gravity wells (pull the ball toward them)
-//   4. Move the ball (add velocity to position)
-//   5. Check for collisions with walls/floor and bounce
+//   1. Check if ball is idle (resting + no forces) → pause sim
+//   2. Log state every 60 frames for debugging
+//   3. Apply gravity (downward acceleration)
+//   4. Apply wind (horizontal acceleration)
+//   5. Apply gravity wells (Newton's F = GM/r², with capture at 3px)
+//   6. Apply air drag (speed-dependent resistance → terminal velocity)
+//   7. Move the ball (position += velocity)
+//   8. Apply ground friction (only when on floor)
+//   9. Check collisions with all 4 walls (bounce or rest based on impact speed)
+//   10. Record trail + age bounce flash effects
 // ============================================================================
 
 function step() {

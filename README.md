@@ -10,6 +10,9 @@ Built as a teaching tool for my son Daniel (9 years old) to explore physics conc
 
 ## 🚀 How to Run
 
+**Online:** [Play it on GitHub Pages](https://YOUR_USERNAME.github.io/Grade12-Physics-Program-Remake/) *(replace with your actual URL after enabling Pages)*
+
+**Locally:**
 ```
 double-click index.html
 ```
