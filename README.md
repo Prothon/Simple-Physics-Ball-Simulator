@@ -204,9 +204,7 @@ This simulator demonstrates these real physics concepts:
 
 ### The VB6 Original (~2006)
 
-The original was a Grade 12 exam project — a circle bouncing around a VB6 form using `Timer` controls as a game loop. You clicked twice to set position and velocity. It had gravity, friction, wind, and bouncing. Global variables everywhere. The physics were wrong but close enough to look right.
-
-The same developer also built "Dragon Wars" — a full RPG with a 3-party system (Warrior/Mage/Assassin/Healer), exponential XP scaling, a 10×10 tile map, armor system, potions, save/load with custom `.DW` files, sound effects, and a final boss. In VB6. In high school. With `HealthPotminor()`, `HealthPotminor2()`, `HealthPotminor3()` — the same function copy-pasted for each party member. Going from 1 team member to 3 caused an 8-hour merge disaster that led to learning about version control.
+The original was a personal project built to study physics formulas. Abstract equations on paper meant nothing — but building a simulator that showed gravity, friction, and bouncing in real-time made them click. You clicked twice to set position and velocity. It had gravity, friction, wind, and bouncing. Global variables everywhere. The physics were wrong but close enough to look right.
 
 ### What Changed
 
