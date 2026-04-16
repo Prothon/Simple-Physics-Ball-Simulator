@@ -545,15 +545,15 @@ function step() {
     const distSquared = dx * dx + dy * dy;
     const dist = Math.sqrt(distSquared);
 
-    if (dist < 10) {
+    if (dist < 3) {
       // Ball has been captured by the gravity well!
       if (_log) console.log(`  WELL[${wi}]: CAPTURED (dist=${dist.toFixed(1)})`);
       ball.x = well.x;
       ball.y = well.y;
       ball.vx = 0;
       ball.vy = 0;
-      console.log(`%c🪐 CAPTURED by well #${wi}! Ball absorbed at (${well.x}, ${well.y})`, 'color: #c084fc; font-weight: bold');
-      return; // Stop physics for this frame
+      console.log(`%c🪐 CAPTURED by well #${wi}!`, 'color: #c084fc; font-weight: bold');
+      return;
     }
 
     // Clamp minimum distance so force can't spike to insane values
@@ -871,20 +871,21 @@ function drawGravityWells() {
     ctx.font = '11px Segoe UI';
     ctx.fillText(`m=${well.mass}`, well.x + coreRadius + 4, well.y - coreRadius - 2);
 
-    // Purple arrow showing pull force on the ball
-    if (ball.active && cbForces.checked) {
+    // Purple arrow showing pull force on the ball — ALWAYS visible
+    if (ball.active) {
       const dx = well.x - ball.x;
       const dy = well.y - ball.y;
-      const distSq = dx * dx + dy * dy;
-      const dist = Math.sqrt(distSq);
-      if (dist > 10 && dist < 500) {
-        const force = (5 * well.mass) / (Math.max(dist, 40) ** 2);
-        const arrowScale = 8;
-        const fx = (dx / dist) * force * arrowScale;
-        const fy = (dy / dist) * force * arrowScale;
-        if (Math.sqrt(fx * fx + fy * fy) > 1) {
-          drawArrow(ball.x, ball.y, ball.x + fx, ball.y + fy, '#c084fc', 2);
-        }
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 3) {
+        const clampedDist = Math.max(dist, 40);
+        const force = (5 * well.mass) / (clampedDist * clampedDist);
+        // Large visual scale so arrows are visible even from far away
+        // Min length of 20px so you can always see which direction the pull is
+        const arrowLen = Math.max(Math.min(force * 500, 150), 20);
+        const fx = (dx / dist) * arrowLen;
+        const fy = (dy / dist) * arrowLen;
+        const thickness = Math.min(1 + force * 3, 5);
+        drawArrow(ball.x, ball.y, ball.x + fx, ball.y + fy, '#c084fc', thickness);
       }
     }
   }
