@@ -1260,26 +1260,43 @@ function drawFormulaOverlay() {
   box.style.display = '';
 
   const g = param('grav');
+  const ts = param('timeScale');
   const e = (param('bounce') / 100).toFixed(2);
   const mu = (param('fric') / 100).toFixed(2);
-  const w = param('wind').toFixed(1);
+  const w = param('wind');
+  const m = param('ballMass');
   const vel = ballVelMs();
   const pos = ballPosMeters();
-  const dragCoeff = (param('drag') / 100).toFixed(4);
+  const dragCoeff = (param('drag') / 100);
+  const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y);
+
+  // Computed per-frame values
+  const gravPerFrame = (g * PPM * DT * ts).toFixed(4);
+  const windPerFrame = (w * PPM * DT * ts / m).toFixed(4);
+  const dragFactor = speed > 0.1 ? Math.max(1 - dragCoeff * speed * ts, 0.5).toFixed(4) : '1.0000';
 
   let text =
-    `Position:   x = ${pos.x} m    y = ${pos.y} m\n` +
-    `Velocity:   Vx = ${vel.x} m/s    Vy = ${vel.y} m/s\n\n` +
-    `Gravity:    Vy += g × Δt  →  Vy += ${g} × ${DT.toFixed(4)}\n` +
-    `Wind:       Vx += wind × Δt  →  Vx += ${w} × ${DT.toFixed(4)}\n` +
-    `Drag:       V = V × (1 − ${dragCoeff} × speed)\n` +
-    `Movement:   x += Vx × Δt     y += Vy × Δt\n\n` +
-    `On bounce:  Vy = −Vy × e  (e = ${e})\n` +
-    `Friction:   Vx = Vx × (1 − μ)  (μ = ${mu})\n` +
-    `Ball mass:  ${param('ballMass').toFixed(1)} kg  (affects wind & wells)`;
+    `Position:   x = ${pos.x} m       y = ${pos.y} m\n` +
+    `Velocity:   Vx = ${vel.x} m/s     Vy = ${vel.y} m/s\n` +
+    `Speed:      ${speed.toFixed(1)} m/s\n\n` +
+    `Gravity:    Vy += g×Δt×scale     = +${gravPerFrame} px/f\n` +
+    `Wind:       Vx += wind×Δt/mass   = +${windPerFrame} px/f\n` +
+    `Drag:       V  × (1−${dragCoeff.toFixed(4)}×spd) = ×${dragFactor}\n` +
+    `Movement:   x += Vx    y += Vy\n\n` +
+    `On bounce:  Vy = −Vy × ${e}\n` +
+    `Friction:   Vx = Vx × (1 − ${mu})\n` +
+    `Ball mass:  ${m.toFixed(1)} kg`;
 
   if (gravWells.length > 0) {
-    text += `\n\nWells:      F = mass / dist²  (${gravWells.length} active)`;
+    text += `\n\nWells (${gravWells.length}):  F = G×M/dist²/mass`;
+    for (let i = 0; i < gravWells.length; i++) {
+      const well = gravWells[i];
+      const dx = well.x - ball.x, dy = well.y - ball.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const clampedDist = Math.max(dist, 40);
+      const force = (50 * well.mass) / (clampedDist * clampedDist) / m;
+      text += `\n  #${i}: dist=${dist.toFixed(0)}px  F=${force.toFixed(2)}`;
+    }
   }
 
   content.textContent = text;
