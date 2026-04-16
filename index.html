@@ -111,6 +111,15 @@
     </label>
     <input type="range" id="sWind" min="-5" max="5" step="0.1" value="0">
 
+    <label>⚽ Ball Mass <span class="val" id="vBallMass">1.0</span>
+      <div class="tip">
+        How heavy the ball is. A heavier ball is harder to push with wind and gravity wells, but gravity pulls everything the same! (Galileo proved this — a feather and a bowling ball fall at the same speed in a vacuum.)<br>
+        <div class="formula">acceleration = force ÷ mass</div>
+        <div class="example">Try mass 0.1 (ping pong ball) vs 10 (bowling ball) near a gravity well!</div>
+        Heavy things are harder to speed up AND harder to slow down. That's called inertia.
+      </div>
+    </label>
+    <input type="range" id="sBallMass" min="0.1" max="10" step="0.1" value="1">
     <label>🌫️ Air Drag <span class="val" id="vDrag">0.10%</span>
       <div class="tip">
         Air resistance! The faster the ball moves, the more the air slows it down. This is why skydivers reach a "terminal velocity" — they stop speeding up because drag equals gravity.<br>
@@ -279,7 +288,8 @@ const log = {
       speed: +Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy).toFixed(2),
       params: {
         grav: param('grav'), bounce: param('bounce'), fric: param('fric'),
-        wind: param('wind'), power: param('power'), timeScale: param('timeScale'), drag: param('drag')
+        wind: param('wind'), power: param('power'), timeScale: param('timeScale'),
+        ballMass: param('ballMass'), drag: param('drag')
       },
       bounds: { L: simLeft(), R: simRight(), T: simTop(), B: simBottom() },
       wells: gravWells.map(w => ({ x: +w.x.toFixed(1), y: +w.y.toFixed(1), mass: w.mass })),
@@ -349,6 +359,7 @@ const SLIDERS = {
   power:  { el: document.getElementById('sPower'),  out: document.getElementById('vPower'),  fmt: v => v + '%' },
   timeScale: { el: document.getElementById('sTimeScale'), out: document.getElementById('vTimeScale'), fmt: v => (+v).toFixed(2) + 'x' },
   drag: { el: document.getElementById('sDrag'), out: document.getElementById('vDrag'), fmt: v => (+v).toFixed(2) + '%' },
+  ballMass: { el: document.getElementById('sBallMass'), out: document.getElementById('vBallMass'), fmt: v => (+v).toFixed(1) },
 };
 
 // When any slider moves, update its display label
@@ -411,15 +422,15 @@ let aimPos = null;       // Where the mouse is during aiming {x, y}
 // ============================================================================
 
 const SCENARIOS = {
-  earth:     { grav: 9.81,  bounce: 40, fric: 25, wind: 0,   power: 50, timeScale: 0.25, drag: 0.2 },
-  moon:      { grav: 1.62,  bounce: 50, fric: 10, wind: 0,   power: 50, timeScale: 0.25, drag: 0 },
-  mars:      { grav: 3.72,  bounce: 45, fric: 20, wind: 0,   power: 50, timeScale: 0.25, drag: 0.05 },
-  jupiter:   { grav: 24.79, bounce: 30, fric: 30, wind: 0,   power: 50, timeScale: 0.25, drag: 0.5 },
-  space:     { grav: 0,     bounce: 60, fric: 0,  wind: 0,   power: 30, timeScale: 0.25, drag: 0.1 },
-  superball: { grav: 9.81,  bounce: 95, fric: 5,  wind: 0,   power: 70, timeScale: 0.25, drag: 0.1 },
-  windstorm: { grav: 9.81,  bounce: 40, fric: 25, wind: 4.5, power: 50, timeScale: 0.25, drag: 0.3 },
-  ice:       { grav: 9.81,  bounce: 40, fric: 1,  wind: 0,   power: 50, timeScale: 0.25, drag: 0.05 },
-  mud:       { grav: 9.81,  bounce: 5,  fric: 90, wind: 0,   power: 50, timeScale: 0.25, drag: 0.8 },
+  earth:     { grav: 9.81,  bounce: 40, fric: 25, wind: 0,   power: 50, timeScale: 0.25, ballMass: 1, drag: 0.2 },
+  moon:      { grav: 1.62,  bounce: 50, fric: 10, wind: 0,   power: 50, timeScale: 0.25, ballMass: 1, drag: 0 },
+  mars:      { grav: 3.72,  bounce: 45, fric: 20, wind: 0,   power: 50, timeScale: 0.25, ballMass: 1, drag: 0.05 },
+  jupiter:   { grav: 24.79, bounce: 30, fric: 30, wind: 0,   power: 50, timeScale: 0.25, ballMass: 1, drag: 0.5 },
+  space:     { grav: 0,     bounce: 60, fric: 0,  wind: 0,   power: 30, timeScale: 0.25, ballMass: 1, drag: 0.1 },
+  superball: { grav: 9.81,  bounce: 95, fric: 5,  wind: 0,   power: 70, timeScale: 0.25, ballMass: 1, drag: 0.1 },
+  windstorm: { grav: 9.81,  bounce: 40, fric: 25, wind: 4.5, power: 50, timeScale: 0.25, ballMass: 1, drag: 0.3 },
+  ice:       { grav: 9.81,  bounce: 40, fric: 1,  wind: 0,   power: 50, timeScale: 0.25, ballMass: 1, drag: 0.05 },
+  mud:       { grav: 9.81,  bounce: 5,  fric: 90, wind: 0,   power: 50, timeScale: 0.25, ballMass: 1, drag: 0.8 },
 };
 
 // Set all sliders to match a scenario
@@ -635,10 +646,15 @@ function step() {
   }
 
   // --- APPLY FORCES ---
+  const mass = param('ballMass');
+
+  // Gravity: NOT divided by mass (everything falls at the same rate — Galileo!)
   if (!onFloor) {
     ball.vy += gravity;
   }
-  ball.vx += wind;
+
+  // Wind: divided by mass (heavier ball = harder to push)
+  ball.vx += wind / mass;
 
   // Gravity wells
   for (let wi = 0; wi < gravWells.length; wi++) {
@@ -666,8 +682,9 @@ function step() {
     // Newton's gravity: F = G × M / r²
     // G=5 tuned so mass 500 at 200px = gentle pull, mass 2000 at 80px = strong orbit
     const force = (50 * well.mass) / clampedDistSq;
-    const fx = (dx / dist) * force * timeScale;
-    const fy = (dy / dist) * force * timeScale;
+    // Apply force divided by ball mass (F=ma → a=F/m)
+    const fx = (dx / dist) * force * timeScale / mass;
+    const fy = (dy / dist) * force * timeScale / mass;
 
     if (_log) log.physics('WELL', `[${wi}]: dist=${dist.toFixed(1)} clamp=${clampedDist.toFixed(0)} force=${force.toFixed(4)} → Δvx=${fx.toFixed(4)} Δvy=${fy.toFixed(4)}`);
 
@@ -1103,6 +1120,7 @@ function drawFormulaOverlay() {
     ``,
     `On bounce:  Vy = −Vy × e  (e = ${e})`,
     `Friction:   Vx = Vx × (1 − μ)  (μ = ${mu})`,
+    `Ball mass:  ${param('ballMass').toFixed(1)} kg  (affects wind & wells)`,
   ];
 
   // Add gravity well info if any exist
