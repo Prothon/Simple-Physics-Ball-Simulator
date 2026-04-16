@@ -857,13 +857,18 @@ function step() {
       return;
     }
 
-    // Clamp minimum distance to well surface so force doesn't spike inside
-    const clampedDist = Math.max(dist, wellRadius(well.mass) + ballRadius());
-    const clampedDistSq = clampedDist * clampedDist;
-
-    // Newton's gravity: F = G × M / r²
-    // G=5 tuned so mass 500 at 200px = gentle pull, mass 2000 at 80px = strong orbit
-    const force = (50 * well.mass) / clampedDistSq;
+    // Gravity force with soft interior:
+    // Outside surface: normal inverse-square F = GM/r²
+    // Inside surface: force drops linearly to 0 at center (like inside a planet)
+    // This prevents stable orbits at the clamp boundary
+    const surfaceDist = wellRadius(well.mass) + ballRadius();
+    let force;
+    if (dist >= surfaceDist) {
+      force = (50 * well.mass) / (dist * dist);
+    } else {
+      const surfaceForce = (50 * well.mass) / (surfaceDist * surfaceDist);
+      force = surfaceForce * (dist / surfaceDist);
+    }
     // Apply force divided by ball mass (F=ma → a=F/m)
     const fx = (dx / dist) * force * timeScale / mass;
     const fy = (dy / dist) * force * timeScale / mass;
@@ -1243,8 +1248,8 @@ function drawGravityWells() {
       const dy = well.y - ball.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist > 3) {
-        const clampedDist = Math.max(dist, 40);
-        const force = (50 * well.mass) / (clampedDist * clampedDist);
+        const sd = wellRadius(well.mass) + ballRadius();
+        const force = dist >= sd ? (50 * well.mass) / (dist * dist) : (50 * well.mass) / (sd * sd) * (dist / sd);
         // Large visual scale so arrows are visible even from far away
         // Min length of 20px so you can always see which direction the pull is
         const arrowLen = Math.max(Math.min(force * 500, 150, dist - 10), 20);
@@ -1406,12 +1411,12 @@ function updateGravityDetail() {
       const w = gravWells[i];
       const dx = w.x - ball.x, dy = w.y - ball.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const cd = Math.max(dist, 40);
-      const force = (50 * w.mass) / (cd * cd) / m;
+      const sd = wellRadius(w.mass) + ballRadius();
+      const force = (dist >= sd ? (50 * w.mass) / (dist * dist) : (50 * w.mass) / (sd * sd) * (dist / sd)) / m;
       const fx = dist > 3 ? (dx / dist) * force * ts : 0;
       const fy = dist > 3 ? (dy / dist) * force * ts : 0;
       totalFx += fx; totalFy += fy;
-      text += `${String(i).padEnd(3)} ${dist.toFixed(0).padEnd(8)} ${cd.toFixed(0).padEnd(8)} ${force.toFixed(4).padEnd(10)} ${fx.toFixed(4).padEnd(10)} ${fy.toFixed(4)}\n`;
+      text += `${String(i).padEnd(3)} ${dist.toFixed(0).padEnd(8)} ${sd.toFixed(0).padEnd(8)} ${force.toFixed(4).padEnd(10)} ${fx.toFixed(4).padEnd(10)} ${fy.toFixed(4)}\n`;
     }
     text += `${'─'.repeat(52)}\n`;
     text += `${'Σ'.padEnd(3)} ${''.padEnd(8)} ${''.padEnd(8)} ${''.padEnd(10)} ${totalFx.toFixed(4).padEnd(10)} ${totalFy.toFixed(4)}`;
